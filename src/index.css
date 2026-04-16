@@ -9,6 +9,10 @@
 
   body {
     @apply bg-museum-950 text-museum-100 font-sans antialiased min-h-screen;
+    background-image:
+      radial-gradient(1100px 520px at 10% -10%, rgba(57, 231, 95, 0.16), transparent 55%),
+      radial-gradient(900px 460px at 100% 0%, rgba(33, 160, 56, 0.14), transparent 60%),
+      linear-gradient(180deg, #04160d 0%, #021108 100%);
   }
 
   h1, h2, h3 {
@@ -24,6 +28,7 @@
   }
   ::-webkit-scrollbar-thumb {
     @apply bg-gold rounded-full;
+    box-shadow: 0 0 0 1px rgba(57, 231, 95, 0.15);
   }
 }
 

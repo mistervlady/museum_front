@@ -248,7 +248,7 @@ export default function AdminPage() {
             <Button
               fullWidth
               variant="secondary"
-              className="mt-3"
+              className="mt-3 !border-[#2BCB4E]/70 !text-[#8BFFAE] hover:!border-[#2BCB4E] hover:!text-[#B7FFCB]"
               loading={layoutLoading}
               onClick={handleOpenLayoutEditor}
             >

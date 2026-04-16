@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Building2, DoorOpen, Plus, X, Layers3, ChevronRight, Link2, Unlink } from 'lucide-react'
 import Button from '@/components/ui/Button'
@@ -398,41 +398,41 @@ export default function LayoutSchemeEditorModal({
         initial={{ opacity: 0, y: 12, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 12 }}
-        className="relative w-full max-w-6xl h-[88vh] rounded-3xl border border-museum-700 bg-museum-950 shadow-2xl shadow-black/60 overflow-hidden flex flex-col"
+        className="relative w-full max-w-6xl h-[88vh] rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-[#04160e] via-[#0a2a1d] to-[#051d14] shadow-2xl shadow-black/60 overflow-hidden flex flex-col"
       >
-        <div className="px-6 py-4 border-b border-museum-800 flex items-center justify-between gap-3">
+        <div className="px-6 py-4 border-b border-emerald-500/20 flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-wider text-museum-500">Админка / схема залов</p>
-            <h3 className="text-xl font-serif font-bold text-museum-50">Настроить схему расположения залов</h3>
+            <p className="text-xs uppercase tracking-wider text-emerald-300/50">Админка / схема залов</p>
+            <h3 className="text-xl font-serif font-bold text-emerald-50">Настроить схему расположения залов</h3>
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full border border-museum-700 text-museum-400 hover:text-museum-100 hover:border-museum-500 transition-colors flex items-center justify-center"
+            className="w-9 h-9 rounded-full border border-emerald-500/30 text-emerald-200/70 hover:text-emerald-50 hover:border-emerald-400/70 transition-colors flex items-center justify-center"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="px-6 py-3 border-b border-museum-800 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 text-sm text-museum-300">
-            <button onClick={backToBuildings} className="hover:text-gold transition-colors">Корпуса</button>
+        <div className="px-6 py-3 border-b border-emerald-500/20 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-sm text-emerald-100/80">
+            <button onClick={backToBuildings} className="hover:text-emerald-300 transition-colors">Корпуса</button>
             {activeBuilding && (
               <>
-                <ChevronRight className="w-4 h-4 text-museum-600" />
-                <span className="text-gold">{activeBuilding.name}</span>
+                <ChevronRight className="w-4 h-4 text-emerald-200/40" />
+                <span className="text-emerald-300">{activeBuilding.name}</span>
                 {activeFloor && (
                   <>
-                    <ChevronRight className="w-4 h-4 text-museum-600" />
-                    <span className="text-museum-200">{activeFloor.name}</span>
+                    <ChevronRight className="w-4 h-4 text-emerald-200/40" />
+                    <span className="text-emerald-100">{activeFloor.name}</span>
                   </>
                 )}
               </>
             )}
           </div>
 
-          <div className="flex items-center gap-3 text-xs text-museum-400">
-            <span className="inline-flex items-center gap-1"><Building2 className="w-3.5 h-3.5 text-gold" /> {buildingCount} корпусов</span>
-            <span className="inline-flex items-center gap-1"><DoorOpen className="w-3.5 h-3.5 text-gold" /> {hallCount} залов</span>
+          <div className="flex items-center gap-3 text-xs text-emerald-100/70">
+            <span className="inline-flex items-center gap-1"><Building2 className="w-3.5 h-3.5 text-[#21A038]" /> {buildingCount} корпусов</span>
+            <span className="inline-flex items-center gap-1"><DoorOpen className="w-3.5 h-3.5 text-[#21A038]" /> {hallCount} залов</span>
           </div>
         </div>
 
@@ -461,8 +461,8 @@ export default function LayoutSchemeEditorModal({
                           onClick={() => switchFloor(floorId)}
                           className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
                             activeFloorId === floorId
-                              ? 'border-gold text-gold bg-gold/10'
-                              : 'border-museum-700 text-museum-300 hover:border-museum-500'
+                              ? 'border-[#2BCB4E] text-[#7DFFA1] bg-[#21A038]/20'
+                              : 'border-emerald-500/30 text-emerald-100/80 hover:border-[#2BCB4E]/70'
                           }`}
                         >
                           {floor.name}
@@ -475,6 +475,9 @@ export default function LayoutSchemeEditorModal({
                     <Button
                       size="sm"
                       variant={linkMode ? 'primary' : 'secondary'}
+                      className={linkMode
+                        ? '!bg-[#21A038] hover:!bg-[#1B8E32] !text-white'
+                        : '!border-[#2BCB4E]/60 !text-[#8BFFAE] hover:!border-[#2BCB4E]'}
                       onClick={() => {
                         setLinkMode((prev) => !prev)
                         setLinkSourceHallId(null)
@@ -486,7 +489,12 @@ export default function LayoutSchemeEditorModal({
                       {linkMode ? 'Режим связей: вкл' : 'Связать залы'}
                     </Button>
 
-                    <Button size="sm" variant="secondary" onClick={addFloor}>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="!border-[#2BCB4E]/60 !text-[#8BFFAE] hover:!border-[#2BCB4E]"
+                      onClick={addFloor}
+                    >
                       <Layers3 className="w-4 h-4" />
                       Добавить этаж
                     </Button>
@@ -495,9 +503,9 @@ export default function LayoutSchemeEditorModal({
 
                 {activeFloor && (
                   <div className="mb-3">
-                    <label className="text-xs text-museum-500 block mb-1">Название этажа</label>
+                    <label className="text-xs text-emerald-100/60 block mb-1">Название этажа</label>
                     <input
-                      className="input"
+                      className="input !bg-[#082317] !border-emerald-500/30 !text-emerald-50 !placeholder-emerald-200/35"
                       value={activeFloor.name}
                       onChange={(e) => renameActiveFloor(e.target.value)}
                       placeholder="Введите название этажа"
@@ -514,25 +522,26 @@ export default function LayoutSchemeEditorModal({
                     pendingNode={pendingNode}
                     selectedEntityId={linkSourceHallId}
                     getEntityMetaText={(entity) => `Связей: ${getHallLinksCount(activeFloor, entity.id)}`}
+                    edges={activeFloor.hallLinks.map((link) => ({ fromId: link.fromHallId, toId: link.toHallId }))}
                   />
                 ) : (
-                  <Card className="text-museum-400 text-sm">В корпусе пока нет этажей</Card>
+                  <Card className="text-emerald-100/70 text-sm !bg-[#082317]/70 !border-emerald-500/30">В корпусе пока нет этажей</Card>
                 )}
               </>
             )}
           </div>
 
-          <div className="border-l border-museum-800 p-5 overflow-auto bg-museum-950/70">
-            <Card className="p-4 bg-museum-900/60">
-              <p className="text-sm font-semibold text-museum-100 mb-1">Работа с узлом</p>
-              <p className="text-xs text-museum-500 mb-3">
+          <div className="border-l border-emerald-500/20 p-5 overflow-auto bg-[#061a12]/50">
+            <Card className="p-4 !bg-[#082317]/70 !border-emerald-500/30">
+              <p className="text-sm font-semibold text-emerald-50 mb-1">Работа с узлом</p>
+              <p className="text-xs text-emerald-100/60 mb-3">
                 {linkMode
                   ? 'Режим связей: нажми на первый зал, затем на второй, чтобы создать ребро.'
                   : 'Нажми на пустой узел в сетке, затем добавь название и сохрани сущность.'}
               </p>
 
               {linkMode ? (
-                <div className="space-y-2 text-sm text-museum-400">
+                <div className="space-y-2 text-sm text-emerald-100/80">
                   <p>
                     Стартовый зал:{' '}
                     <span className="text-green-300">
@@ -541,42 +550,52 @@ export default function LayoutSchemeEditorModal({
                         : 'не выбран'}
                     </span>
                   </p>
-                  <p className="text-xs text-museum-500">
+                  <p className="text-xs text-emerald-100/60">
                     Повторный клик по выбранному залу сбрасывает выбор.
                   </p>
                 </div>
               ) : pendingNode ? (
                 <div className="space-y-3">
-                  <p className="text-xs text-museum-400">
-                    Узел: <span className="text-gold">{pendingNode.row + 1}:{pendingNode.col + 1}</span>
+                  <p className="text-xs text-emerald-100/80">
+                    Узел: <span className="text-[#7DFFA1]">{pendingNode.row + 1}:{pendingNode.col + 1}</span>
                   </p>
                   <input
-                    className="input"
+                    className="input !bg-[#082317] !border-emerald-500/30 !text-emerald-50 !placeholder-emerald-200/35"
                     value={pendingName}
                     onChange={(e) => setPendingName(e.target.value)}
                     placeholder={mode === 'buildings' ? 'Название корпуса' : 'Название зала'}
                   />
 
                   {mode === 'buildings' ? (
-                    <Button fullWidth onClick={addBuilding} disabled={!canAddBuilding}>
+                    <Button
+                      fullWidth
+                      className="!bg-[#21A038] hover:!bg-[#1B8E32] !text-white"
+                      onClick={addBuilding}
+                      disabled={!canAddBuilding}
+                    >
                       <Plus className="w-4 h-4" />
                       Добавить корпус
                     </Button>
                   ) : (
-                    <Button fullWidth onClick={addHall} disabled={!canAddHall}>
+                    <Button
+                      fullWidth
+                      className="!bg-[#21A038] hover:!bg-[#1B8E32] !text-white"
+                      onClick={addHall}
+                      disabled={!canAddHall}
+                    >
                       <Plus className="w-4 h-4" />
                       Добавить зал
                     </Button>
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-museum-500">Выбери узел в сетке для добавления.</p>
+                <p className="text-sm text-emerald-100/60">Выбери узел в сетке для добавления.</p>
               )}
             </Card>
 
             {activeFloor && activeFloor.hallLinks.length > 0 && (
-              <Card className="p-4 bg-museum-900/60 mt-3">
-                <p className="text-sm font-semibold text-museum-100 mb-2">Связанные залы</p>
+              <Card className="p-4 !bg-[#082317]/70 !border-emerald-500/30 mt-3">
+                <p className="text-sm font-semibold text-emerald-50 mb-2">Связанные залы</p>
                 <div className="space-y-2 max-h-44 overflow-auto pr-1">
                   {activeFloor.hallLinks.map((link) => {
                     const fromHall = activeFloor.halls[link.fromHallId]
@@ -590,7 +609,7 @@ export default function LayoutSchemeEditorModal({
                         </span>
                         <button
                           onClick={() => removeHallLink(link.fromHallId, link.toHallId)}
-                          className="w-7 h-7 rounded-full border border-museum-700 text-museum-400 hover:text-red-300 hover:border-red-500/60 transition-colors flex items-center justify-center"
+                          className="w-7 h-7 rounded-full border border-emerald-500/30 text-emerald-100/60 hover:text-red-300 hover:border-red-500/60 transition-colors flex items-center justify-center"
                           title="Удалить связь"
                         >
                           <Unlink className="w-3.5 h-3.5" />
@@ -610,10 +629,10 @@ export default function LayoutSchemeEditorModal({
                   exit={{ opacity: 0, y: 8 }}
                   className="mt-3"
                 >
-                  <Card className="p-4 bg-museum-900/60">
-                    <p className="text-sm font-semibold text-museum-100 mb-1">Текущий корпус</p>
-                    <p className="text-sm text-gold">{activeBuilding.name}</p>
-                    <p className="text-xs text-museum-500 mt-1">Этажей: {activeBuilding.floorOrder.length}</p>
+                  <Card className="p-4 !bg-[#082317]/70 !border-emerald-500/30">
+                    <p className="text-sm font-semibold text-emerald-50 mb-1">Текущий корпус</p>
+                    <p className="text-sm text-[#7DFFA1]">{activeBuilding.name}</p>
+                    <p className="text-xs text-emerald-100/60 mt-1">Этажей: {activeBuilding.floorOrder.length}</p>
                   </Card>
                 </motion.div>
               )}
@@ -621,9 +640,9 @@ export default function LayoutSchemeEditorModal({
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-museum-800 flex items-center justify-end gap-2">
-          <Button variant="ghost" onClick={onClose}>Отмена</Button>
-          <Button onClick={() => onSave(draft)} loading={saving}>
+        <div className="px-6 py-4 border-t border-emerald-500/20 flex items-center justify-end gap-2">
+          <Button variant="ghost" className="!text-emerald-100/75 hover:!text-emerald-50 hover:!bg-emerald-500/10" onClick={onClose}>Отмена</Button>
+          <Button className="!bg-[#21A038] hover:!bg-[#1B8E32] !text-white" onClick={() => onSave(draft)} loading={saving}>
             Сохранить схему
           </Button>
         </div>
@@ -640,6 +659,7 @@ interface GridViewProps<TNode> {
   pendingNode: GridPosition | null
   selectedEntityId?: string | null
   getEntityMetaText?: (node: TNode) => string
+  edges?: Array<{ fromId: string; toId: string }>
 }
 
 function GridView<TNode extends { id: string; name: string }>({
@@ -650,8 +670,64 @@ function GridView<TNode extends { id: string; name: string }>({
   pendingNode,
   selectedEntityId,
   getEntityMetaText,
+  edges = [],
 }: GridViewProps<TNode>) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const entityRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+  const [segments, setSegments] = useState<Array<{ key: string; x1: number; y1: number; x2: number; y2: number }>>([])
+  const segmentsSignatureRef = useRef('')
+  const gradientId = useId().replace(/:/g, '')
   const nodes = [] as JSX.Element[]
+
+  useLayoutEffect(() => {
+    const updateSegments = () => {
+      const container = containerRef.current
+      if (!container) {
+        setSegments([])
+        return
+      }
+
+      const containerRect = container.getBoundingClientRect()
+
+      const nextSegments = edges
+        .map((edge) => {
+          const fromNode = entityRefs.current[edge.fromId]
+          const toNode = entityRefs.current[edge.toId]
+          if (!fromNode || !toNode) return null
+
+          const fromRect = fromNode.getBoundingClientRect()
+          const toRect = toNode.getBoundingClientRect()
+
+          return {
+            key: `${edge.fromId}-${edge.toId}`,
+            x1: fromRect.left - containerRect.left + fromRect.width / 2,
+            y1: fromRect.top - containerRect.top + fromRect.height / 2,
+            x2: toRect.left - containerRect.left + toRect.width / 2,
+            y2: toRect.top - containerRect.top + toRect.height / 2,
+          }
+        })
+        .filter((segment): segment is { key: string; x1: number; y1: number; x2: number; y2: number } => segment !== null)
+
+      const nextSignature = nextSegments
+        .map((segment) => {
+          const x1 = Math.round(segment.x1 * 10) / 10
+          const y1 = Math.round(segment.y1 * 10) / 10
+          const x2 = Math.round(segment.x2 * 10) / 10
+          const y2 = Math.round(segment.y2 * 10) / 10
+          return `${segment.key}:${x1}:${y1}:${x2}:${y2}`
+        })
+        .join('|')
+
+      if (nextSignature === segmentsSignatureRef.current) return
+
+      segmentsSignatureRef.current = nextSignature
+      setSegments(nextSegments)
+    }
+
+    updateSegments()
+    window.addEventListener('resize', updateSegments)
+    return () => window.removeEventListener('resize', updateSegments)
+  }, [edges, rows, cols])
 
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {
@@ -663,19 +739,23 @@ function GridView<TNode extends { id: string; name: string }>({
       nodes.push(
         <button
           key={`${row}-${col}`}
+          ref={(element) => {
+            if (!entity) return
+            entityRefs.current[entity.id] = element
+          }}
           onClick={() => onNodeClick(position)}
           className={`min-h-16 rounded-xl border p-2 text-left transition-all ${
             entity
-              ? 'border-green-700/70 bg-green-950/40 hover:bg-green-950/60'
-              : 'border-museum-700 bg-museum-900/60 hover:border-museum-500'
-          } ${isPending ? 'ring-2 ring-gold/40' : ''} ${isSelected ? 'ring-2 ring-green-400/70' : ''}`}
+              ? 'border-[#2BCB4E]/70 bg-[#0D3A27]/70 hover:bg-[#114830]/80'
+              : 'border-emerald-300/20 bg-[#082317]/75 hover:border-emerald-300/45'
+          } ${isPending ? 'ring-2 ring-[#7DFFA1]/50' : ''} ${isSelected ? 'ring-2 ring-[#7DFFA1]/80' : ''}`}
         >
-          <span className="text-[11px] text-museum-500">{row + 1}:{col + 1}</span>
-          <p className={`text-sm mt-1 truncate ${entity ? 'text-green-300' : 'text-museum-500'}`}>
+          <span className="text-[11px] text-emerald-100/55">{row + 1}:{col + 1}</span>
+          <p className={`text-sm mt-1 truncate ${entity ? 'text-[#92FFB4]' : 'text-emerald-100/45'}`}>
             {entity ? entity.name : 'Пусто'}
           </p>
           {entity && getEntityMetaText && (
-            <p className="text-[11px] mt-1 text-green-200/80 truncate">{getEntityMetaText(entity)}</p>
+            <p className="text-[11px] mt-1 text-emerald-100/80 truncate">{getEntityMetaText(entity)}</p>
           )}
         </button>,
       )
@@ -683,13 +763,62 @@ function GridView<TNode extends { id: string; name: string }>({
   }
 
   return (
-    <div
-      className="grid gap-2"
-      style={{
-        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-      }}
-    >
-      {nodes}
+    <div ref={containerRef} className="relative">
+      {segments.length > 0 && (
+        <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" aria-hidden>
+          <defs>
+            <linearGradient id={`hall-edge-${gradientId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#39E75F" stopOpacity="0.95" />
+              <stop offset="100%" stopColor="#21A038" stopOpacity="0.8" />
+            </linearGradient>
+            <filter id={`hall-edge-glow-${gradientId}`} x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          {segments.map((segment) => (
+            <g key={segment.key}>
+              <motion.line
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 0.95 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+                x1={segment.x1}
+                y1={segment.y1}
+                x2={segment.x2}
+                y2={segment.y2}
+                stroke={`url(#hall-edge-${gradientId})`}
+                strokeWidth={3}
+                strokeLinecap="round"
+                filter={`url(#hall-edge-glow-${gradientId})`}
+              />
+              <line
+                x1={segment.x1}
+                y1={segment.y1}
+                x2={segment.x2}
+                y2={segment.y2}
+                stroke="#B3FFC7"
+                strokeOpacity={0.35}
+                strokeWidth={1}
+                strokeDasharray="6 6"
+                strokeLinecap="round"
+              />
+            </g>
+          ))}
+        </svg>
+      )}
+
+      <div
+        className="relative z-10 grid gap-2"
+        style={{
+          gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+        }}
+      >
+        {nodes}
+      </div>
     </div>
   )
 }
