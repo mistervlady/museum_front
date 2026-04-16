@@ -99,11 +99,17 @@ export interface LayoutHall {
   position: GridPosition
 }
 
+export interface LayoutHallLink {
+  fromHallId: string
+  toHallId: string
+}
+
 export interface LayoutFloor {
   id: string
   name: string
   grid: GridSize
   halls: Record<string, LayoutHall>
+  hallLinks: LayoutHallLink[]
 }
 
 export interface LayoutBuilding {
@@ -124,5 +130,6 @@ export interface MuseumLayoutPayload extends MuseumLayoutScheme {
   indexes: {
     buildingsByNode: Record<string, string>
     hallsByNode: Record<string, Record<string, string>>
+    hallGraphByFloor: Record<string, Record<string, string[]>>
   }
 }

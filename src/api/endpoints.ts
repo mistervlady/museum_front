@@ -128,11 +128,43 @@ export const getAdminStats = () =>
 
 const toNodeKey = (row: number, col: number) => `${row}:${col}`
 
+const normalizeLayoutScheme = (layout: MuseumLayoutScheme): MuseumLayoutScheme => {
+  const buildings = Object.fromEntries(
+    Object.entries(layout.buildings).map(([buildingId, building]) => {
+      const floors = Object.fromEntries(
+        Object.entries(building.floors).map(([floorId, floor]) => [
+          floorId,
+          {
+            ...floor,
+            hallLinks: floor.hallLinks ?? [],
+          },
+        ]),
+      )
+
+      return [
+        buildingId,
+        {
+          ...building,
+          floors,
+        },
+      ]
+    }),
+  )
+
+  return {
+    ...layout,
+    buildings,
+  }
+}
+
 const toLayoutPayload = (layout: MuseumLayoutScheme): MuseumLayoutPayload => {
   const buildingsByNode: Record<string, string> = {}
   const hallsByNode: Record<string, Record<string, string>> = {}
+  const hallGraphByFloor: Record<string, Record<string, string[]>> = {}
 
-  Object.values(layout.buildings).forEach((building) => {
+  const normalizedLayout = normalizeLayoutScheme(layout)
+
+  Object.values(normalizedLayout.buildings).forEach((building) => {
     buildingsByNode[toNodeKey(building.position.row, building.position.col)] = building.id
 
     building.floorOrder.forEach((floorId) => {
@@ -141,24 +173,41 @@ const toLayoutPayload = (layout: MuseumLayoutScheme): MuseumLayoutPayload => {
 
       const floorKey = `${building.id}:${floor.id}`
       hallsByNode[floorKey] = {}
+      hallGraphByFloor[floorKey] = {}
 
       Object.values(floor.halls).forEach((hall) => {
         hallsByNode[floorKey][toNodeKey(hall.position.row, hall.position.col)] = hall.id
+        hallGraphByFloor[floorKey][hall.id] = []
+      })
+
+      floor.hallLinks.forEach((link) => {
+        const fromExists = !!floor.halls[link.fromHallId]
+        const toExists = !!floor.halls[link.toHallId]
+        if (!fromExists || !toExists || link.fromHallId === link.toHallId) return
+
+        if (!hallGraphByFloor[floorKey][link.fromHallId].includes(link.toHallId)) {
+          hallGraphByFloor[floorKey][link.fromHallId].push(link.toHallId)
+        }
+
+        if (!hallGraphByFloor[floorKey][link.toHallId].includes(link.fromHallId)) {
+          hallGraphByFloor[floorKey][link.toHallId].push(link.fromHallId)
+        }
       })
     })
   })
 
   return {
-    ...layout,
+    ...normalizedLayout,
     indexes: {
       buildingsByNode,
       hallsByNode,
+      hallGraphByFloor,
     },
   }
 }
 
 export const getMuseumLayout = () =>
-  api.get<MuseumLayoutScheme>('/admin/layout').then((r) => r.data)
+  api.get<MuseumLayoutScheme>('/admin/layout').then((r) => normalizeLayoutScheme(r.data))
 
 export const saveMuseumLayout = (layout: MuseumLayoutScheme) =>
   api.post<{ success: boolean; message: string }>('/admin/layout', toLayoutPayload(layout)).then((r) => r.data)
