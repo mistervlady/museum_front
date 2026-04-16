@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Building2, DoorOpen, Plus, X, Layers3, ChevronRight, Link2, Unlink } from 'lucide-react'
 import Button from '@/components/ui/Button'
@@ -587,7 +587,7 @@ export default function LayoutSchemeEditorModal({
                       onClick={addFloor}
                     >
                       <Layers3 className="w-4 h-4" />
-                      Добавить этаж
+                      Добавить этаж/крыло
                     </Button>
                   </div>
                 </div>
@@ -786,10 +786,9 @@ function GridView<TNode extends { id: string; name: string }>({
   const containerRef = useRef<HTMLDivElement | null>(null)
   const entityRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const [segments, setSegments] = useState<
-    Array<{ key: string; x1: number; y1: number; x2: number; y2: number; isDiagonal: boolean; isOrthogonal: boolean }>
+    Array<{ key: string; x1: number; y1: number; x2: number; y2: number }>
   >([])
   const segmentsSignatureRef = useRef('')
-  const gradientId = useId().replace(/:/g, '')
   const nodes = [] as JSX.Element[]
 
   useLayoutEffect(() => {
@@ -816,42 +815,12 @@ function GridView<TNode extends { id: string; name: string }>({
           const toCenterX = toRect.left - containerRect.left + toRect.width / 2
           const toCenterY = toRect.top - containerRect.top + toRect.height / 2
 
-          const dx = toCenterX - fromCenterX
-          const dy = toCenterY - fromCenterY
-          const sameColumn = Math.abs(dx) <= 1
-          const sameRow = Math.abs(dy) <= 1
-
-          let x1 = fromCenterX
-          let y1 = fromCenterY
-          let x2 = toCenterX
-          let y2 = toCenterY
-
-          if (sameColumn) {
-            y1 = dy >= 0
-              ? fromRect.top - containerRect.top + fromRect.height
-              : fromRect.top - containerRect.top
-            y2 = dy >= 0
-              ? toRect.top - containerRect.top
-              : toRect.top - containerRect.top + toRect.height
-          } else if (sameRow) {
-            x1 = dx >= 0
-              ? fromRect.left - containerRect.left + fromRect.width
-              : fromRect.left - containerRect.left
-            x2 = dx >= 0
-              ? toRect.left - containerRect.left
-              : toRect.left - containerRect.left + toRect.width
-          }
-
-          const isDiagonal = !sameColumn && !sameRow
-
           return {
             key: `${edge.fromId}-${edge.toId}`,
-            x1,
-            y1,
-            x2,
-            y2,
-            isDiagonal,
-            isOrthogonal: !isDiagonal,
+            x1: fromCenterX,
+            y1: fromCenterY,
+            x2: toCenterX,
+            y2: toCenterY,
           }
         })
         .filter(
@@ -861,8 +830,6 @@ function GridView<TNode extends { id: string; name: string }>({
             y1: number
             x2: number
             y2: number
-            isDiagonal: boolean
-            isOrthogonal: boolean
           } => segment !== null,
         )
 
@@ -872,7 +839,7 @@ function GridView<TNode extends { id: string; name: string }>({
           const y1 = Math.round(segment.y1 * 10) / 10
           const x2 = Math.round(segment.x2 * 10) / 10
           const y2 = Math.round(segment.y2 * 10) / 10
-          return `${segment.key}:${x1}:${y1}:${x2}:${y2}:${segment.isDiagonal ? 1 : 0}`
+          return `${segment.key}:${x1}:${y1}:${x2}:${y2}`
         })
         .join('|')
 
@@ -923,62 +890,58 @@ function GridView<TNode extends { id: string; name: string }>({
   return (
     <div ref={containerRef} className="relative">
       {segments.length > 0 && (
-        <svg className="absolute inset-0 w-full h-full pointer-events-none z-20" aria-hidden>
-          <defs>
-            <linearGradient id={`hall-edge-${gradientId}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#39E75F" stopOpacity="0.95" />
-              <stop offset="100%" stopColor="#21A038" stopOpacity="0.8" />
-            </linearGradient>
-            <filter id={`hall-edge-glow-${gradientId}`} x="-150%" y="-150%" width="400%" height="400%">
-              <feGaussianBlur stdDeviation="3.4" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-
-          {segments.map((segment) => (
-            <g key={segment.key}>
+        <>
+          <svg className="absolute inset-0 w-full h-full pointer-events-none z-20" aria-hidden>
+            {segments.map((segment) => (
               <line
+                key={`outer-${segment.key}`}
                 x1={segment.x1}
                 y1={segment.y1}
                 x2={segment.x2}
                 y2={segment.y2}
-                stroke={`url(#hall-edge-${gradientId})`}
-                strokeOpacity={segment.isDiagonal ? 0.26 : 0.42}
-                strokeWidth={segment.isDiagonal ? 8 : 10}
+                stroke="#165C28"
+                strokeOpacity={0.34}
+                strokeWidth={8}
                 strokeLinecap="round"
               />
+            ))}
+          </svg>
+
+          <svg className="absolute inset-0 w-full h-full pointer-events-none z-30" aria-hidden>
+            {segments.map((segment) => (
               <motion.line
+                key={`mid-${segment.key}`}
                 initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 0.95 }}
+                animate={{ pathLength: 1, opacity: 0.72 }}
                 transition={{ duration: 0.35, ease: 'easeOut' }}
                 x1={segment.x1}
                 y1={segment.y1}
                 x2={segment.x2}
                 y2={segment.y2}
-                stroke={`url(#hall-edge-${gradientId})`}
-                strokeWidth={segment.isDiagonal ? 3 : 5}
+                stroke="#7DFFA1"
+                strokeWidth={2.8}
                 strokeLinecap="round"
-                filter={`url(#hall-edge-glow-${gradientId})`}
               />
-              {segment.isDiagonal && (
-                <line
-                  x1={segment.x1}
-                  y1={segment.y1}
-                  x2={segment.x2}
-                  y2={segment.y2}
-                  stroke="#B3FFC7"
-                  strokeOpacity={0.38}
-                  strokeWidth={1}
-                  strokeDasharray="6 6"
-                  strokeLinecap="round"
-                />
-              )}
-            </g>
-          ))}
-        </svg>
+            ))}
+          </svg>
+
+          <svg className="absolute inset-0 w-full h-full pointer-events-none z-40" aria-hidden>
+            {segments.map((segment) => (
+              <line
+                key={`dash-${segment.key}`}
+                x1={segment.x1}
+                y1={segment.y1}
+                x2={segment.x2}
+                y2={segment.y2}
+                stroke="#C7FFD7"
+                strokeOpacity={0.78}
+                strokeWidth={1.2}
+                strokeDasharray="5 5"
+                strokeLinecap="round"
+              />
+            ))}
+          </svg>
+        </>
       )}
 
       <div

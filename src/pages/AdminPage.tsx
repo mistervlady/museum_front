@@ -300,9 +300,6 @@ export default function AdminPage() {
               Настроить схему расположения залов
             </Button>
 
-            <p className="text-xs text-museum-500 mt-2">
-              Редактор откроет сетку корпусов, затем вложенные сетки залов по этажам внутри корпуса.
-            </p>
           </div>
 
           {/* Result */}
