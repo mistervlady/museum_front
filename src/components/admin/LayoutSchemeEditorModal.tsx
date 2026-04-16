@@ -876,7 +876,7 @@ function GridView<TNode extends { id: string; name: string }>({
           } ${isPending ? 'ring-2 ring-[#7DFFA1]/50' : ''} ${isSelected ? 'ring-2 ring-[#7DFFA1]/80' : ''}`}
         >
           <span className="text-[11px] text-emerald-100/55">{row + 1}:{col + 1}</span>
-          <p className={`text-sm mt-1 truncate ${entity ? 'text-[#92FFB4]' : 'text-emerald-100/45'}`}>
+          <p className={`text-sm mt-3 truncate ${entity ? 'text-[#92FFB4]' : 'text-emerald-100/45'}`}>
             {entity ? entity.name : 'Пусто'}
           </p>
           {entity && getEntityMetaText && (

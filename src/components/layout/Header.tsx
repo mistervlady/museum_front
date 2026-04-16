@@ -54,7 +54,7 @@ export default function Header({
             </div>
           )}
           <span className="font-serif font-bold text-museum-50 text-sm">
-            {title ?? 'МузейГид'}
+            {title ?? 'Музейный Гид'}
           </span>
         </div>
 
