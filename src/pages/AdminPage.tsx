@@ -20,14 +20,21 @@ import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
-import { uploadExcelFile, getAdminStats } from '@/api/endpoints'
-import type { UploadResult } from '@/types'
+import LayoutSchemeEditorModal from '@/components/admin/LayoutSchemeEditorModal'
+import { uploadExcelFile, getAdminStats, getMuseumLayout, saveMuseumLayout } from '@/api/endpoints'
+import type { UploadResult, MuseumLayoutScheme } from '@/types'
 
 interface Stats {
   museums: number
   exhibits: number
   sessions: number
 }
+
+const createEmptyLayoutScheme = (): MuseumLayoutScheme => ({
+  version: 1,
+  buildingGrid: { rows: 4, cols: 5 },
+  buildings: {},
+})
 
 export default function AdminPage() {
   const navigate = useNavigate()
@@ -36,6 +43,12 @@ export default function AdminPage() {
   const [result, setResult] = useState<UploadResult | null>(null)
   const [stats, setStats] = useState<Stats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
+  const [layoutOpen, setLayoutOpen] = useState(false)
+  const [layoutScheme, setLayoutScheme] = useState<MuseumLayoutScheme>(createEmptyLayoutScheme())
+  const [layoutLoading, setLayoutLoading] = useState(false)
+  const [layoutSaving, setLayoutSaving] = useState(false)
+  const [layoutLoadedOnce, setLayoutLoadedOnce] = useState(false)
+  const [layoutResult, setLayoutResult] = useState<{ success: boolean; message: string } | null>(null)
 
   // Load stats
   useEffect(() => {
@@ -73,6 +86,49 @@ export default function AdminPage() {
       setResult({ success: false, message: (e as Error).message })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleOpenLayoutEditor = async () => {
+    setLayoutOpen(true)
+    if (layoutLoadedOnce || layoutLoading) return
+
+    setLayoutLoading(true)
+    try {
+      const layout = await getMuseumLayout()
+      setLayoutScheme(layout)
+      setLayoutLoadedOnce(true)
+      setLayoutResult(null)
+    } catch (e) {
+      setLayoutResult({
+        success: false,
+        message: `Не удалось загрузить схему с сервера: ${(e as Error).message}`,
+      })
+    } finally {
+      setLayoutLoading(false)
+    }
+  }
+
+  const handleSaveLayout = async (nextLayout: MuseumLayoutScheme) => {
+    setLayoutSaving(true)
+    try {
+      const response = await saveMuseumLayout(nextLayout)
+      setLayoutScheme(nextLayout)
+      setLayoutLoadedOnce(true)
+      setLayoutResult({
+        success: response.success,
+        message: response.message,
+      })
+      if (response.success) {
+        setLayoutOpen(false)
+      }
+    } catch (e) {
+      setLayoutResult({
+        success: false,
+        message: `Не удалось сохранить схему: ${(e as Error).message}`,
+      })
+    } finally {
+      setLayoutSaving(false)
     }
   }
 
@@ -188,6 +244,21 @@ export default function AdminPage() {
               <Upload className="w-4 h-4" />
               Загрузить на сервер
             </Button>
+
+            <Button
+              fullWidth
+              variant="secondary"
+              className="mt-3"
+              loading={layoutLoading}
+              onClick={handleOpenLayoutEditor}
+            >
+              <Map className="w-4 h-4" />
+              Настроить схему расположения залов
+            </Button>
+
+            <p className="text-xs text-museum-500 mt-2">
+              Редактор откроет сетку корпусов, затем вложенные сетки залов по этажам внутри корпуса.
+            </p>
           </div>
 
           {/* Result */}
@@ -238,6 +309,38 @@ export default function AdminPage() {
             )}
           </AnimatePresence>
 
+          <AnimatePresence>
+            {layoutResult && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className={clsx(
+                  'rounded-2xl border p-4',
+                  layoutResult.success
+                    ? 'bg-green-950/40 border-green-700/50'
+                    : 'bg-red-950/40 border-red-700/50',
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  {layoutResult.success ? (
+                    <CheckCircle2 className="w-5 h-5 text-green-400 mt-0.5 shrink-0" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
+                  )}
+                  <div>
+                    <p className={clsx('font-semibold text-sm', layoutResult.success ? 'text-green-300' : 'text-red-300')}>
+                      {layoutResult.success ? 'Схема обновлена' : 'Ошибка схемы'}
+                    </p>
+                    <p className={clsx('text-sm mt-0.5', layoutResult.success ? 'text-green-400/80' : 'text-red-400/80')}>
+                      {layoutResult.message}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Format hint */}
           <Card className="bg-museum-900/50">
             <div className="flex items-start gap-3">
@@ -272,6 +375,18 @@ export default function AdminPage() {
 
         </div>
       </PageLayout>
+
+      <AnimatePresence>
+        {layoutOpen && (
+          <LayoutSchemeEditorModal
+            isOpen={layoutOpen}
+            initialLayout={layoutScheme}
+            saving={layoutSaving}
+            onClose={() => setLayoutOpen(false)}
+            onSave={handleSaveLayout}
+          />
+        )}
+      </AnimatePresence>
     </>
   )
 }

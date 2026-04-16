@@ -10,6 +10,8 @@ import type {
   ExhibitSuggestion,
   UploadResult,
   Exhibit,
+  MuseumLayoutScheme,
+  MuseumLayoutPayload,
 } from '@/types'
 
 // ─── Museums ─────────────────────────────────────────────────────────────────
@@ -123,3 +125,40 @@ export const uploadExcelFile = (file: File, museumId?: string) => {
 
 export const getAdminStats = () =>
   api.get<{ museums: number; exhibits: number; sessions: number }>('/admin/stats').then((r) => r.data)
+
+const toNodeKey = (row: number, col: number) => `${row}:${col}`
+
+const toLayoutPayload = (layout: MuseumLayoutScheme): MuseumLayoutPayload => {
+  const buildingsByNode: Record<string, string> = {}
+  const hallsByNode: Record<string, Record<string, string>> = {}
+
+  Object.values(layout.buildings).forEach((building) => {
+    buildingsByNode[toNodeKey(building.position.row, building.position.col)] = building.id
+
+    building.floorOrder.forEach((floorId) => {
+      const floor = building.floors[floorId]
+      if (!floor) return
+
+      const floorKey = `${building.id}:${floor.id}`
+      hallsByNode[floorKey] = {}
+
+      Object.values(floor.halls).forEach((hall) => {
+        hallsByNode[floorKey][toNodeKey(hall.position.row, hall.position.col)] = hall.id
+      })
+    })
+  })
+
+  return {
+    ...layout,
+    indexes: {
+      buildingsByNode,
+      hallsByNode,
+    },
+  }
+}
+
+export const getMuseumLayout = () =>
+  api.get<MuseumLayoutScheme>('/admin/layout').then((r) => r.data)
+
+export const saveMuseumLayout = (layout: MuseumLayoutScheme) =>
+  api.post<{ success: boolean; message: string }>('/admin/layout', toLayoutPayload(layout)).then((r) => r.data)

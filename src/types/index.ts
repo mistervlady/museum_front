@@ -82,3 +82,47 @@ export interface UploadResult {
   rowsProcessed?: number
   errors?: string[]
 }
+
+export interface GridSize {
+  rows: number
+  cols: number
+}
+
+export interface GridPosition {
+  row: number
+  col: number
+}
+
+export interface LayoutHall {
+  id: string
+  name: string
+  position: GridPosition
+}
+
+export interface LayoutFloor {
+  id: string
+  name: string
+  grid: GridSize
+  halls: Record<string, LayoutHall>
+}
+
+export interface LayoutBuilding {
+  id: string
+  name: string
+  position: GridPosition
+  floorOrder: string[]
+  floors: Record<string, LayoutFloor>
+}
+
+export interface MuseumLayoutScheme {
+  version: 1
+  buildingGrid: GridSize
+  buildings: Record<string, LayoutBuilding>
+}
+
+export interface MuseumLayoutPayload extends MuseumLayoutScheme {
+  indexes: {
+    buildingsByNode: Record<string, string>
+    hallsByNode: Record<string, Record<string, string>>
+  }
+}
