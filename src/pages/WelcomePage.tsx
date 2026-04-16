@@ -52,7 +52,7 @@ export default function WelcomePage() {
             </h1>
             <p className="text-museum-400 text-sm leading-relaxed max-w-sm mx-auto">
               Это умный музейный гид с персонализированными маршрутами и AI-описаниями экспонатов.
-              Выбери музей, чтобы начать.
+              Выберите музей, чтобы начать.
             </p>
           </motion.div>
 

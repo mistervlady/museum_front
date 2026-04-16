@@ -321,7 +321,7 @@ export default function InfinityExcursionPage() {
                         exit={{ opacity: 0 }}
                         className="flex flex-col gap-2"
                       >
-                        <p className="text-museum-500 text-xs pl-1">Выбери экспонат для посещения:</p>
+                        <p className="text-museum-500 text-xs pl-1">Выберите экспонат для посещения:</p>
                         {suggestions.map(({ exhibit }) => (
                           <Card
                             key={exhibit.id}
@@ -366,7 +366,7 @@ export default function InfinityExcursionPage() {
                     <textarea
                       rows={1}
                       className="textarea flex-1 py-2.5 text-sm resize-none"
-                      placeholder={mode === 'guide' ? 'Напиши гиду…' : 'Спроси эксперта…'}
+                      placeholder={mode === 'guide' ? 'Напишите гиду…' : 'Спросите эксперта…'}
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e) => {

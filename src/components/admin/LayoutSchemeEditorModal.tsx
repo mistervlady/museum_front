@@ -75,6 +75,7 @@ export default function LayoutSchemeEditorModal({
   const [pendingName, setPendingName] = useState('')
   const [linkMode, setLinkMode] = useState(false)
   const [linkSourceHallId, setLinkSourceHallId] = useState<string | null>(null)
+  const [selectedHallId, setSelectedHallId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isOpen) return
@@ -86,6 +87,7 @@ export default function LayoutSchemeEditorModal({
     setPendingName('')
     setLinkMode(false)
     setLinkSourceHallId(null)
+    setSelectedHallId(null)
   }, [initialLayout, isOpen])
 
   useEffect(() => {
@@ -140,6 +142,7 @@ export default function LayoutSchemeEditorModal({
 
       if (!linkSourceHallId) {
         setLinkSourceHallId(existing.id)
+        setSelectedHallId(existing.id)
         setPendingNode(null)
         setPendingName('')
         return
@@ -147,6 +150,7 @@ export default function LayoutSchemeEditorModal({
 
       if (linkSourceHallId === existing.id) {
         setLinkSourceHallId(null)
+        setSelectedHallId(existing.id)
         return
       }
 
@@ -184,17 +188,101 @@ export default function LayoutSchemeEditorModal({
       })
 
       setLinkSourceHallId(null)
+      setSelectedHallId(existing.id)
       return
     }
 
     if (existing) {
+      setSelectedHallId(existing.id)
       setPendingNode(null)
       setPendingName('')
       return
     }
 
+    setSelectedHallId(null)
     setPendingNode(node)
     setPendingName('')
+  }
+
+  const removeHall = () => {
+    if (!activeBuilding || !activeFloor || !selectedHallId) return
+
+    const hallToDeleteId = selectedHallId
+
+    setDraft((prev) => {
+      const building = prev.buildings[activeBuilding.id]
+      if (!building) return prev
+      const floor = building.floors[activeFloor.id]
+      if (!floor || !floor.halls[hallToDeleteId]) return prev
+
+      const nextHalls = { ...floor.halls }
+      delete nextHalls[hallToDeleteId]
+
+      return {
+        ...prev,
+        buildings: {
+          ...prev.buildings,
+          [building.id]: {
+            ...building,
+            floors: {
+              ...building.floors,
+              [floor.id]: {
+                ...floor,
+                halls: nextHalls,
+                hallLinks: floor.hallLinks.filter(
+                  (link) => link.fromHallId !== hallToDeleteId && link.toHallId !== hallToDeleteId,
+                ),
+              },
+            },
+          },
+        },
+      }
+    })
+
+    setSelectedHallId(null)
+    if (linkSourceHallId === hallToDeleteId) {
+      setLinkSourceHallId(null)
+    }
+  }
+
+  const renameActiveBuilding = (name: string) => {
+    if (!activeBuilding) return
+
+    setDraft((prev) => {
+      const building = prev.buildings[activeBuilding.id]
+      if (!building) return prev
+
+      return {
+        ...prev,
+        buildings: {
+          ...prev.buildings,
+          [building.id]: {
+            ...building,
+            name,
+          },
+        },
+      }
+    })
+  }
+
+  const removeActiveBuilding = () => {
+    if (!activeBuilding) return
+
+    const buildingId = activeBuilding.id
+
+    setDraft((prev) => {
+      if (!prev.buildings[buildingId]) return prev
+
+      const nextBuildings = { ...prev.buildings }
+      delete nextBuildings[buildingId]
+
+      return {
+        ...prev,
+        buildings: nextBuildings,
+      }
+    })
+
+    backToBuildings()
   }
 
   const addBuilding = () => {
@@ -356,6 +444,7 @@ export default function LayoutSchemeEditorModal({
     setPendingNode(null)
     setPendingName('')
     setLinkSourceHallId(null)
+    setSelectedHallId(null)
   }
 
   const backToBuildings = () => {
@@ -366,6 +455,7 @@ export default function LayoutSchemeEditorModal({
     setPendingName('')
     setLinkMode(false)
     setLinkSourceHallId(null)
+    setSelectedHallId(null)
   }
 
   const buildingCount = Object.keys(draft.buildings).length
@@ -483,6 +573,7 @@ export default function LayoutSchemeEditorModal({
                         setLinkSourceHallId(null)
                         setPendingNode(null)
                         setPendingName('')
+                        setSelectedHallId(null)
                       }}
                     >
                       <Link2 className="w-4 h-4" />
@@ -536,8 +627,8 @@ export default function LayoutSchemeEditorModal({
               <p className="text-sm font-semibold text-emerald-50 mb-1">Работа с узлом</p>
               <p className="text-xs text-emerald-100/60 mb-3">
                 {linkMode
-                  ? 'Режим связей: нажми на первый зал, затем на второй, чтобы создать ребро.'
-                  : 'Нажми на пустой узел в сетке, затем добавь название и сохрани сущность.'}
+                  ? 'Режим связей: нажмите на первый зал, затем на второй, чтобы создать ребро.'
+                  : 'Нажмите на пустой узел в сетке, затем добавьте название и сохраните сущность.'}
               </p>
 
               {linkMode ? (
@@ -588,8 +679,20 @@ export default function LayoutSchemeEditorModal({
                     </Button>
                   )}
                 </div>
+              ) : selectedHallId && activeFloor?.halls[selectedHallId] ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-emerald-100/85">
+                    Выбран зал: <span className="text-[#7DFFA1]">{activeFloor.halls[selectedHallId].name}</span>
+                  </p>
+                  <p className="text-xs text-emerald-100/60">
+                    Связей у зала: {getHallLinksCount(activeFloor, selectedHallId)}
+                  </p>
+                  <Button fullWidth variant="danger" onClick={removeHall}>
+                    Удалить зал
+                  </Button>
+                </div>
               ) : (
-                <p className="text-sm text-emerald-100/60">Выбери узел в сетке для добавления.</p>
+                <p className="text-sm text-emerald-100/60">Выберите узел в сетке для добавления.</p>
               )}
             </Card>
 
@@ -631,8 +734,16 @@ export default function LayoutSchemeEditorModal({
                 >
                   <Card className="p-4 !bg-[#082317]/70 !border-emerald-500/30">
                     <p className="text-sm font-semibold text-emerald-50 mb-1">Текущий корпус</p>
-                    <p className="text-sm text-[#7DFFA1]">{activeBuilding.name}</p>
-                    <p className="text-xs text-emerald-100/60 mt-1">Этажей: {activeBuilding.floorOrder.length}</p>
+                    <input
+                      className="input !bg-[#082317] !border-emerald-500/30 !text-emerald-50 !placeholder-emerald-200/35"
+                      value={activeBuilding.name}
+                      onChange={(e) => renameActiveBuilding(e.target.value)}
+                      placeholder="Введите название корпуса"
+                    />
+                    <p className="text-xs text-emerald-100/60 mt-2">Этажей: {activeBuilding.floorOrder.length}</p>
+                    <Button className="w-full mt-3" variant="danger" onClick={removeActiveBuilding}>
+                      Удалить корпус
+                    </Button>
                   </Card>
                 </motion.div>
               )}
@@ -674,7 +785,9 @@ function GridView<TNode extends { id: string; name: string }>({
 }: GridViewProps<TNode>) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const entityRefs = useRef<Record<string, HTMLButtonElement | null>>({})
-  const [segments, setSegments] = useState<Array<{ key: string; x1: number; y1: number; x2: number; y2: number }>>([])
+  const [segments, setSegments] = useState<
+    Array<{ key: string; x1: number; y1: number; x2: number; y2: number; isDiagonal: boolean; isOrthogonal: boolean }>
+  >([])
   const segmentsSignatureRef = useRef('')
   const gradientId = useId().replace(/:/g, '')
   const nodes = [] as JSX.Element[]
@@ -698,15 +811,60 @@ function GridView<TNode extends { id: string; name: string }>({
           const fromRect = fromNode.getBoundingClientRect()
           const toRect = toNode.getBoundingClientRect()
 
+          const fromCenterX = fromRect.left - containerRect.left + fromRect.width / 2
+          const fromCenterY = fromRect.top - containerRect.top + fromRect.height / 2
+          const toCenterX = toRect.left - containerRect.left + toRect.width / 2
+          const toCenterY = toRect.top - containerRect.top + toRect.height / 2
+
+          const dx = toCenterX - fromCenterX
+          const dy = toCenterY - fromCenterY
+          const sameColumn = Math.abs(dx) <= 1
+          const sameRow = Math.abs(dy) <= 1
+
+          let x1 = fromCenterX
+          let y1 = fromCenterY
+          let x2 = toCenterX
+          let y2 = toCenterY
+
+          if (sameColumn) {
+            y1 = dy >= 0
+              ? fromRect.top - containerRect.top + fromRect.height
+              : fromRect.top - containerRect.top
+            y2 = dy >= 0
+              ? toRect.top - containerRect.top
+              : toRect.top - containerRect.top + toRect.height
+          } else if (sameRow) {
+            x1 = dx >= 0
+              ? fromRect.left - containerRect.left + fromRect.width
+              : fromRect.left - containerRect.left
+            x2 = dx >= 0
+              ? toRect.left - containerRect.left
+              : toRect.left - containerRect.left + toRect.width
+          }
+
+          const isDiagonal = !sameColumn && !sameRow
+
           return {
             key: `${edge.fromId}-${edge.toId}`,
-            x1: fromRect.left - containerRect.left + fromRect.width / 2,
-            y1: fromRect.top - containerRect.top + fromRect.height / 2,
-            x2: toRect.left - containerRect.left + toRect.width / 2,
-            y2: toRect.top - containerRect.top + toRect.height / 2,
+            x1,
+            y1,
+            x2,
+            y2,
+            isDiagonal,
+            isOrthogonal: !isDiagonal,
           }
         })
-        .filter((segment): segment is { key: string; x1: number; y1: number; x2: number; y2: number } => segment !== null)
+        .filter(
+          (segment): segment is {
+            key: string
+            x1: number
+            y1: number
+            x2: number
+            y2: number
+            isDiagonal: boolean
+            isOrthogonal: boolean
+          } => segment !== null,
+        )
 
       const nextSignature = nextSegments
         .map((segment) => {
@@ -714,7 +872,7 @@ function GridView<TNode extends { id: string; name: string }>({
           const y1 = Math.round(segment.y1 * 10) / 10
           const x2 = Math.round(segment.x2 * 10) / 10
           const y2 = Math.round(segment.y2 * 10) / 10
-          return `${segment.key}:${x1}:${y1}:${x2}:${y2}`
+          return `${segment.key}:${x1}:${y1}:${x2}:${y2}:${segment.isDiagonal ? 1 : 0}`
         })
         .join('|')
 
@@ -765,14 +923,14 @@ function GridView<TNode extends { id: string; name: string }>({
   return (
     <div ref={containerRef} className="relative">
       {segments.length > 0 && (
-        <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" aria-hidden>
+        <svg className="absolute inset-0 w-full h-full pointer-events-none z-20" aria-hidden>
           <defs>
             <linearGradient id={`hall-edge-${gradientId}`} x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#39E75F" stopOpacity="0.95" />
               <stop offset="100%" stopColor="#21A038" stopOpacity="0.8" />
             </linearGradient>
-            <filter id={`hall-edge-glow-${gradientId}`} x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
+            <filter id={`hall-edge-glow-${gradientId}`} x="-150%" y="-150%" width="400%" height="400%">
+              <feGaussianBlur stdDeviation="3.4" result="blur" />
               <feMerge>
                 <feMergeNode in="blur" />
                 <feMergeNode in="SourceGraphic" />
@@ -782,6 +940,16 @@ function GridView<TNode extends { id: string; name: string }>({
 
           {segments.map((segment) => (
             <g key={segment.key}>
+              <line
+                x1={segment.x1}
+                y1={segment.y1}
+                x2={segment.x2}
+                y2={segment.y2}
+                stroke={`url(#hall-edge-${gradientId})`}
+                strokeOpacity={segment.isDiagonal ? 0.26 : 0.42}
+                strokeWidth={segment.isDiagonal ? 8 : 10}
+                strokeLinecap="round"
+              />
               <motion.line
                 initial={{ pathLength: 0, opacity: 0 }}
                 animate={{ pathLength: 1, opacity: 0.95 }}
@@ -791,21 +959,23 @@ function GridView<TNode extends { id: string; name: string }>({
                 x2={segment.x2}
                 y2={segment.y2}
                 stroke={`url(#hall-edge-${gradientId})`}
-                strokeWidth={3}
+                strokeWidth={segment.isDiagonal ? 3 : 5}
                 strokeLinecap="round"
                 filter={`url(#hall-edge-glow-${gradientId})`}
               />
-              <line
-                x1={segment.x1}
-                y1={segment.y1}
-                x2={segment.x2}
-                y2={segment.y2}
-                stroke="#B3FFC7"
-                strokeOpacity={0.35}
-                strokeWidth={1}
-                strokeDasharray="6 6"
-                strokeLinecap="round"
-              />
+              {segment.isDiagonal && (
+                <line
+                  x1={segment.x1}
+                  y1={segment.y1}
+                  x2={segment.x2}
+                  y2={segment.y2}
+                  stroke="#B3FFC7"
+                  strokeOpacity={0.38}
+                  strokeWidth={1}
+                  strokeDasharray="6 6"
+                  strokeLinecap="round"
+                />
+              )}
             </g>
           ))}
         </svg>

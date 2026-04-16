@@ -94,7 +94,7 @@ export default function ReadyExcursionPage() {
               >
                 <div>
                   <h2 className="section-title">Формат экскурсии</h2>
-                  <p className="section-subtitle">Как ты хочешь получать информацию об экспонатах?</p>
+                  <p className="section-subtitle">Как Вы хотите получать информацию об экспонатах?</p>
                 </div>
 
                 <div className="flex flex-col gap-3">
@@ -144,7 +144,7 @@ export default function ReadyExcursionPage() {
                   <h2 className="section-title">Экскурсия содержит аудио</h2>
                   <p className="section-subtitle max-w-xs mx-auto">
                     Вы пройдёте по {TOTAL_EXHIBITS} экспонатам с текстовым и аудиоописанием.
-                    Надень наушники!
+                    Наденьте наушники!
                   </p>
                 </div>
                 <Button size="lg" loading={loading} onClick={handleStart}>

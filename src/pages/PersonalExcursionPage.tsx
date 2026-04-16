@@ -186,7 +186,7 @@ export default function PersonalExcursionPage() {
                 <div>
                   <h2 className="section-title">Стиль экскурсии</h2>
                   <p className="section-subtitle">
-                    Выбери, в какой манере гид будет рассказывать. Напиши свой вариант или выбери пример.
+                    Выберите, в какой манере гид будет рассказывать. Напишите свой вариант или выберите пример.
                   </p>
                 </div>
 
@@ -207,10 +207,10 @@ export default function PersonalExcursionPage() {
                 </div>
 
                 <div>
-                  <p className="text-museum-500 text-xs mb-2">или введи свой:</p>
+                  <p className="text-museum-500 text-xs mb-2">или введите свой:</p>
                   <textarea
                     className="textarea h-24"
-                    placeholder="Напиши стиль рассказчика…"
+                    placeholder="Напишите стиль рассказчика…"
                     value={style}
                     onChange={(e) => setStyle(e.target.value)}
                   />
@@ -240,7 +240,7 @@ export default function PersonalExcursionPage() {
               >
                 <div>
                   <h2 className="section-title">Формат экскурсии</h2>
-                  <p className="section-subtitle">Хочешь видеть фотографии экспонатов?</p>
+                  <p className="section-subtitle">Хотите видеть фотографии экспонатов?</p>
                 </div>
 
                 <div className="flex flex-col gap-3">
@@ -274,9 +274,9 @@ export default function PersonalExcursionPage() {
                 className="flex flex-col gap-5"
               >
                 <div>
-                  <h2 className="section-title">Твои интересы</h2>
+                  <h2 className="section-title">Ваши интересы</h2>
                   <p className="section-subtitle">
-                    Кратко опиши, что хочешь увидеть — темы, жанры, эпохи, настроение.
+                    Кратко опишите, что хотите увидеть: темы, жанры, эпохи, настроение.
                   </p>
                 </div>
                 <textarea
@@ -418,7 +418,7 @@ export default function PersonalExcursionPage() {
                     {/* Q&A */}
                     <div className="rounded-2xl bg-museum-900 border border-museum-700 p-4 flex flex-col gap-3">
                       <p className="text-museum-400 text-xs flex items-center gap-1.5">
-                        <MessageSquare className="w-3.5 h-3.5" /> Задай вопрос об экспонате
+                        <MessageSquare className="w-3.5 h-3.5" /> Задайте вопрос об экспонате
                       </p>
 
                       {answer && (
@@ -433,7 +433,7 @@ export default function PersonalExcursionPage() {
                       <div className="flex gap-2">
                         <input
                           className="input flex-1 py-2 text-sm"
-                          placeholder="Введи вопрос…"
+                          placeholder="Введите вопрос…"
                           value={question}
                           onChange={(e) => setQuestion(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleAsk(question)}

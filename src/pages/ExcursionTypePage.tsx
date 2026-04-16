@@ -12,7 +12,7 @@ const TYPES = [
     label: 'Персональная',
     emoji: '🎨',
     description:
-      'Маршрут создаётся специально под тебя. Выбери стиль рассказчика, темы и количество экспонатов.',
+      'Маршрут создаётся специально для Вас. Выберите стиль рассказчика, темы и количество экспонатов.',
     tags: ['AI-описания', 'Карта маршрута', 'Аудио'],
   },
   {
@@ -65,7 +65,7 @@ export default function ExcursionTypePage() {
           animate="visible"
         >
           <motion.div variants={itemVariants}>
-            <h2 className="section-title">Выбери тип экскурсии</h2>
+            <h2 className="section-title">Выберите тип экскурсии</h2>
             <p className="section-subtitle">
               У каждого типа свой формат взаимодействия с гидом.
             </p>

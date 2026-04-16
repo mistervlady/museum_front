@@ -36,6 +36,47 @@ const createEmptyLayoutScheme = (): MuseumLayoutScheme => ({
   buildings: {},
 })
 
+const createMockLayoutScheme = (): MuseumLayoutScheme => ({
+  version: 1,
+  buildingGrid: { rows: 4, cols: 5 },
+  buildings: {
+    mock_building_1: {
+      id: 'mock_building_1',
+      name: 'Корпус А',
+      position: { row: 1, col: 1 },
+      floorOrder: ['mock_floor_1'],
+      floors: {
+        mock_floor_1: {
+          id: 'mock_floor_1',
+          name: 'Этаж 1',
+          grid: { rows: 5, cols: 5 },
+          halls: {
+            mock_hall_1: {
+              id: 'mock_hall_1',
+              name: 'Зал 101',
+              position: { row: 1, col: 1 },
+            },
+            mock_hall_2: {
+              id: 'mock_hall_2',
+              name: 'Зал 102',
+              position: { row: 1, col: 2 },
+            },
+            mock_hall_3: {
+              id: 'mock_hall_3',
+              name: 'Зал 103',
+              position: { row: 2, col: 2 },
+            },
+          },
+          hallLinks: [
+            { fromHallId: 'mock_hall_1', toHallId: 'mock_hall_2' },
+            { fromHallId: 'mock_hall_2', toHallId: 'mock_hall_3' },
+          ],
+        },
+      },
+    },
+  },
+})
+
 export default function AdminPage() {
   const navigate = useNavigate()
   const [file, setFile] = useState<File | null>(null)
@@ -91,6 +132,7 @@ export default function AdminPage() {
 
   const handleOpenLayoutEditor = async () => {
     setLayoutOpen(true)
+
     if (layoutLoadedOnce || layoutLoading) return
 
     setLayoutLoading(true)
@@ -99,10 +141,12 @@ export default function AdminPage() {
       setLayoutScheme(layout)
       setLayoutLoadedOnce(true)
       setLayoutResult(null)
-    } catch (e) {
+    } catch {
+      setLayoutScheme(createMockLayoutScheme())
+      setLayoutLoadedOnce(true)
       setLayoutResult({
-        success: false,
-        message: `Не удалось загрузить схему с сервера: ${(e as Error).message}`,
+        success: true,
+        message: 'Сервер схемы пока недоступен. Загружена моковая схема для работы.',
       })
     } finally {
       setLayoutLoading(false)
@@ -172,7 +216,7 @@ export default function AdminPage() {
           <div>
             <h2 className="section-title">Загрузить данные</h2>
             <p className="section-subtitle mb-4">
-              Загрузи Excel-файл с данными об экспонатах. Файл должен содержать колонки:
+              Загрузите Excel-файл с данными об экспонатах. Файл должен содержать колонки:
               <code className="ml-1 text-gold">id</code>,
               <code className="ml-1 text-gold">name</code>,
               <code className="ml-1 text-gold">description</code>,
@@ -198,13 +242,13 @@ export default function AdminPage() {
                 )}
               />
               {isDragActive ? (
-                <p className="text-gold font-medium">Отпусти файл здесь</p>
+                <p className="text-gold font-medium">Отпустите файл здесь</p>
               ) : (
                 <div>
                   <p className="text-museum-300 font-medium mb-1">
-                    Перетащи .xlsx файл сюда
+                    Перетащите .xlsx файл сюда
                   </p>
-                  <p className="text-museum-600 text-sm">или нажми для выбора</p>
+                  <p className="text-museum-600 text-sm">или нажмите для выбора</p>
                 </div>
               )}
             </div>
