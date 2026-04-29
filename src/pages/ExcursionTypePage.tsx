@@ -1,6 +1,6 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Infinity, Palette, BookOpen } from 'lucide-react'
+import { Infinity, Palette, BookOpen, Settings } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import PageLayout from '@/components/layout/PageLayout'
 import Card from '@/components/ui/Card'
@@ -54,6 +54,10 @@ export default function ExcursionTypePage() {
     navigate(`/excursion/${type}?museum=${museumId}`)
   }
 
+  const handleAdmin = () => {
+    navigate(`/admin?museum=${museumId}`)
+  }
+
   return (
     <>
       <Header title="Тип экскурсии" showBack backTo="/" />
@@ -101,6 +105,31 @@ export default function ExcursionTypePage() {
               </Card>
             </motion.div>
           ))}
+
+          <motion.div variants={itemVariants}>
+            <Card hoverable className="group" onClick={handleAdmin}>
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-museum-800 border border-museum-600 flex items-center justify-center text-xl shrink-0 group-hover:border-gold/60 transition-colors">
+                  <Settings className="w-5 h-5 text-gold" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-serif font-semibold text-museum-50 text-lg mb-1 group-hover:text-gold transition-colors">
+                    Администрирование
+                  </h3>
+                  <p className="text-museum-400 text-sm leading-relaxed mb-3">
+                    Загрузите новые экспонаты и настройте схему залов выбранного музея.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['Загрузка данных', 'Схема залов'].map((tag) => (
+                      <span key={tag} className="badge badge-gold text-xs">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </motion.div>
         </motion.div>
       </PageLayout>
     </>

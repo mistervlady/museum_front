@@ -1,19 +1,8 @@
 import { useState, useCallback, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Upload,
-  FileSpreadsheet,
-  CheckCircle2,
-  XCircle,
-  Database,
-  Image,
-  Map,
-  Users,
-  X,
-  AlertCircle,
-} from 'lucide-react'
+import { Upload, FileSpreadsheet, CheckCircle2, XCircle, Image, Map, Users, X, AlertCircle } from 'lucide-react'
 import clsx from 'clsx'
 import Header from '@/components/layout/Header'
 import PageLayout from '@/components/layout/PageLayout'
@@ -78,7 +67,11 @@ const createMockLayoutScheme = (): MuseumLayoutScheme => ({
 })
 
 export default function AdminPage() {
-  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const museumParam = params.get('museum')
+  const museumValue = Number(museumParam)
+  const museumId = Number.isFinite(museumValue) ? museumValue : undefined
+  const backTo = museumId ? `/excursion-type?museum=${museumId}` : '/'
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<UploadResult | null>(null)
@@ -120,7 +113,7 @@ export default function AdminPage() {
     setLoading(true)
     setResult(null)
     try {
-      const res = await uploadExcelFile(file)
+      const res = await uploadExcelFile(file, museumId)
       setResult(res)
       if (res.success) setFile(null)
     } catch (e) {
@@ -137,7 +130,7 @@ export default function AdminPage() {
 
     setLayoutLoading(true)
     try {
-      const layout = await getMuseumLayout()
+      const layout = await getMuseumLayout(museumId)
       setLayoutScheme(layout)
       setLayoutLoadedOnce(true)
       setLayoutResult(null)
@@ -156,7 +149,7 @@ export default function AdminPage() {
   const handleSaveLayout = async (nextLayout: MuseumLayoutScheme) => {
     setLayoutSaving(true)
     try {
-      const response = await saveMuseumLayout(nextLayout)
+      const response = await saveMuseumLayout(nextLayout, museumId)
       setLayoutScheme(nextLayout)
       setLayoutLoadedOnce(true)
       setLayoutResult({
@@ -184,9 +177,9 @@ export default function AdminPage() {
 
   return (
     <>
-      <Header title="Администратор" showBack backTo="/" />
+      <Header title="Администратор" showBack backTo={backTo} />
       <PageLayout>
-        <div className="py-6 flex flex-col gap-6">
+        <div className="py-6 flex flex-col gap-6 text-base">
 
           {/* Stats */}
           <div>
@@ -216,12 +209,7 @@ export default function AdminPage() {
           <div>
             <h2 className="section-title">Загрузить данные</h2>
             <p className="section-subtitle mb-4">
-              Загрузите Excel-файл с данными об экспонатах. Файл должен содержать колонки:
-              <code className="ml-1 text-gold">id</code>,
-              <code className="ml-1 text-gold">name</code>,
-              <code className="ml-1 text-gold">description</code>,
-              <code className="ml-1 text-gold">image_url</code>,
-              <code className="ml-1 text-gold">room</code>.
+              Загрузите Excel-файл с данными об экспонатах выбранного музея.
             </p>
 
             {/* Dropzone */}
@@ -292,7 +280,7 @@ export default function AdminPage() {
             <Button
               fullWidth
               variant="secondary"
-              className="mt-3 !border-[#2BCB4E]/70 !text-[#8BFFAE] hover:!border-[#2BCB4E] hover:!text-[#B7FFCB]"
+              className="mt-3 !border-museum-500 !text-museum-100 hover:!border-gold hover:!text-gold"
               loading={layoutLoading}
               onClick={handleOpenLayoutEditor}
             >
@@ -381,38 +369,6 @@ export default function AdminPage() {
               </motion.div>
             )}
           </AnimatePresence>
-
-          {/* Format hint */}
-          <Card className="bg-museum-900/50">
-            <div className="flex items-start gap-3">
-              <Database className="w-5 h-5 text-gold mt-0.5 shrink-0" />
-              <div>
-                <p className="font-semibold text-museum-200 text-sm mb-2">Формат Excel-файла</p>
-                <div className="overflow-x-auto">
-                  <table className="text-xs text-museum-400 border-collapse">
-                    <thead>
-                      <tr>
-                        {['id', 'name', 'description', 'image_url', 'room'].map((col) => (
-                          <th key={col} className="border border-museum-700 px-3 py-1.5 text-gold font-mono text-left">
-                            {col}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        {['1', 'Название экспоната', 'Описание…', 'https://…/img.jpg', '3'].map((v, i) => (
-                          <td key={i} className="border border-museum-800 px-3 py-1.5 whitespace-nowrap text-museum-500">
-                            {v}
-                          </td>
-                        ))}
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </Card>
 
         </div>
       </PageLayout>

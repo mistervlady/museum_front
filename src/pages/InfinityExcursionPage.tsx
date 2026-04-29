@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Send, ArrowLeft, Sparkles, MapPin } from 'lucide-react'
 import clsx from 'clsx'
@@ -14,14 +14,13 @@ import VoiceRecorder from '@/components/ui/VoiceRecorder'
 import TypingIndicator from '@/components/ui/TypingIndicator'
 import {
   startInfinityExcursion,
-  sendGuideMessage,
   requestExhibitSuggestions,
-  startExpertSession,
-  sendExpertMessage,
+  chooseExhibit,
+  sendInfinityMessage,
   returnToGuide,
   transcribeAudio,
 } from '@/api/endpoints'
-import type { ChatMessage, ExhibitSuggestion, InfinityExcursionSession, InfinityMode } from '@/types'
+import type { ChatMessage, ExhibitSuggestion, InfinityMode } from '@/types'
 
 type InitStep = 'start' | 'history_prompt' | 'chat'
 
@@ -33,15 +32,19 @@ function makeMsg(role: 'user' | 'ai', content: string, audioUrl?: string): ChatM
 }
 
 export default function InfinityExcursionPage() {
-  const navigate = useNavigate()
   const [params] = useSearchParams()
-  const userId = params.get('user') ?? 'web-user'
+  const userIdParam = params.get('user')
+  const museumIdParam = params.get('museum')
+  const userIdValue = Number(userIdParam)
+  const museumIdValue = Number(museumIdParam)
+  const resolvedUserId = Number.isFinite(userIdValue) ? userIdValue : 1
+  const resolvedMuseumId = Number.isFinite(museumIdValue) ? museumIdValue : 1
 
   const [initStep, setInitStep] = useState<InitStep>('start')
   const [loading, setLoading] = useState(false)
   const [typing, setTyping] = useState(false)
 
-  const [session, setSession] = useState<InfinityExcursionSession | null>(null)
+  const [sessionId, setSessionId] = useState<string | null>(null)
   const [mode, setMode] = useState<InfinityMode>('guide')
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -59,38 +62,83 @@ export default function InfinityExcursionPage() {
   }, [messages, typing, showSuggestions])
 
   // ── Start / history handling ───────────────────────────────────────────────
-  const handleStart = useCallback(async (continueHistory = false) => {
+  const applyStartEvent = useCallback((eventText: string | null, audioUrl?: string, newSessionId?: string) => {
+    if (newSessionId) setSessionId(newSessionId)
+    setInitStep('chat')
+    setMode('guide')
+    if (eventText) {
+      setMessages([makeMsg('ai', eventText, audioUrl)])
+    } else {
+      setMessages([])
+    }
+  }, [])
+
+  const handleStart = useCallback(async () => {
     setLoading(true)
     try {
-      const s = await startInfinityExcursion(userId)
-      setSession(s)
+      const event = await startInfinityExcursion({
+        userId: resolvedUserId,
+        museumId: resolvedMuseumId,
+      })
 
-      if (s.hasHistory && !continueHistory) {
+      if (event.event === 'infinity_choose_continue') {
         setInitStep('history_prompt')
+        setMessages([])
+        setSessionId(null)
+        setMode('guide')
         setLoading(false)
         return
       }
 
-      const prompt = s.hasHistory && continueHistory
-        ? 'Пользователь вернулся в музей и решил продолжить экскурсию'
-        : 'Поприветствуй пользователя'
+      if (event.event === 'infinity_ready') {
+        const readyEvent = await startInfinityExcursion({
+          userId: resolvedUserId,
+          museumId: resolvedMuseumId,
+          action: 'guide_proceed_start',
+        })
+        applyStartEvent(
+          readyEvent.text ?? readyEvent.message ?? null,
+          readyEvent.audio_url,
+          readyEvent.session_id,
+        )
+        return
+      }
 
-      setInitStep('chat')
-      setMode('guide')
-      setTyping(true)
-      const aiMsg = await sendGuideMessage(s.sessionId, prompt)
-      setMessages([aiMsg])
-      setTyping(false)
+      applyStartEvent(
+        event.text ?? event.message ?? null,
+        event.audio_url,
+        event.session_id,
+      )
     } catch (e) {
       alert((e as Error).message)
     } finally {
       setLoading(false)
     }
-  }, [userId])
+  }, [applyStartEvent, resolvedMuseumId, resolvedUserId])
+
+  const handleHistoryAction = useCallback(async (action: 'guide_continue_chat' | 'guide_new_chat') => {
+    setLoading(true)
+    try {
+      const event = await startInfinityExcursion({
+        userId: resolvedUserId,
+        museumId: resolvedMuseumId,
+        action,
+      })
+      applyStartEvent(
+        event.text ?? event.message ?? null,
+        event.audio_url,
+        event.session_id,
+      )
+    } catch (e) {
+      alert((e as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }, [applyStartEvent, resolvedMuseumId, resolvedUserId])
 
   // ── Send guide message ─────────────────────────────────────────────────────
   const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim() || !session) return
+    if (!text.trim() || !sessionId) return
     const userMsg = makeMsg('user', text)
     setMessages((prev) => [...prev, userMsg])
     setInput('')
@@ -98,20 +146,15 @@ export default function InfinityExcursionPage() {
     setSuggestions([])
     setShowSuggestions(false)
     try {
-      if (mode === 'guide') {
-        const aiMsg = await sendGuideMessage(session.sessionId, text)
-        setMessages((prev) => [...prev, aiMsg])
-      } else {
-        const expertId = session.expertSessionId!
-        const aiMsg = await sendExpertMessage(expertId, text)
-        setMessages((prev) => [...prev, aiMsg])
-      }
+      const event = await sendInfinityMessage(sessionId, text)
+      const aiText = event.text ?? event.message ?? ''
+      setMessages((prev) => [...prev, makeMsg('ai', aiText, event.audio_url)])
     } catch (e) {
       alert((e as Error).message)
     } finally {
       setTyping(false)
     }
-  }, [session, mode])
+  }, [sessionId])
 
   const handleVoiceMessage = useCallback(async (blob: Blob) => {
     const text = await transcribeAudio(blob)
@@ -120,57 +163,68 @@ export default function InfinityExcursionPage() {
 
   // ── Suggest exhibits ───────────────────────────────────────────────────────
   const handleSuggest = useCallback(async () => {
-    if (!session) return
+    if (!sessionId) return
     setTyping(true)
     setSuggestions([])
     setShowSuggestions(false)
     try {
-      const suggests = await requestExhibitSuggestions(session.sessionId)
-      setSuggestions(suggests)
+      const event = await requestExhibitSuggestions(sessionId)
+      const items = event.exhibits ?? []
+      setSuggestions(
+        items.map((item) => ({
+          exhibit: {
+            id: item.id,
+            name: item.name,
+          },
+        })),
+      )
       setShowSuggestions(true)
     } catch (e) {
       alert((e as Error).message)
     } finally {
       setTyping(false)
     }
-  }, [session])
+  }, [sessionId])
 
   // ── Choose exhibit (enter expert mode) ────────────────────────────────────
   const handleChooseExhibit = useCallback(async (exhibitId: number, exhibitName: string) => {
-    if (!session) return
+    if (!sessionId) return
     setShowSuggestions(false)
     setSuggestions([])
     setTyping(true)
     setCurrentExhibit({ name: exhibitName })
     try {
-      const { expertSessionId, exhibit } = await startExpertSession(session.sessionId, exhibitId)
-      setSession((s) => s ? { ...s, expertSessionId, mode: 'expert' } : s)
+      const event = await chooseExhibit(sessionId, exhibitId)
+      const aiText = event.text ?? event.message ?? ''
       setMode('expert')
-      setCurrentExhibit({ name: exhibit.name, imageUrl: exhibit.imageUrl })
-      const aiMsg = await sendExpertMessage(expertSessionId, 'Пользователь впервые у данного экспоната, сделай краткое вступление')
-      setMessages((prev) => [...prev, aiMsg])
+      setCurrentExhibit({
+        name: event.exhibit?.name ?? exhibitName,
+        imageUrl: event.exhibit?.image_url,
+      })
+      setMessages((prev) => [...prev, makeMsg('ai', aiText, event.audio_url)])
     } catch (e) {
       alert((e as Error).message)
     } finally {
       setTyping(false)
     }
-  }, [session])
+  }, [sessionId])
 
   // ── Return to guide ────────────────────────────────────────────────────────
   const handleReturnToGuide = useCallback(async () => {
-    if (!session?.expertSessionId) return
+    if (!sessionId) return
     setTyping(true)
     setMode('guide')
     setCurrentExhibit(null)
     try {
-      const aiMsg = await returnToGuide(session.sessionId, session.expertSessionId)
-      setMessages((prev) => [...prev, aiMsg])
+      const event = await returnToGuide(sessionId)
+      const aiText = event.text ?? event.message ?? ''
+      setMessages((prev) => [...prev, makeMsg('ai', aiText, event.audio_url)])
     } catch (e) {
       alert((e as Error).message)
     } finally {
       setTyping(false)
     }
-  }, [session])
+  }, [sessionId])
 
   return (
     <>
@@ -201,7 +255,7 @@ export default function InfinityExcursionPage() {
                     <span key={f} className="badge-gold px-3 py-1.5 rounded-full">{f}</span>
                   ))}
                 </div>
-                <Button size="lg" loading={loading} onClick={() => handleStart(false)}>
+                <Button size="lg" loading={loading} onClick={handleStart}>
                   Начать экскурсию
                 </Button>
               </motion.div>
@@ -223,10 +277,10 @@ export default function InfinityExcursionPage() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-3">
-                  <Button fullWidth loading={loading} onClick={() => handleStart(true)}>
+                  <Button fullWidth loading={loading} onClick={() => handleHistoryAction('guide_continue_chat')}>
                     Продолжить прошлую экскурсию
                   </Button>
-                  <Button fullWidth variant="secondary" loading={loading} onClick={() => handleStart(false)}>
+                  <Button fullWidth variant="secondary" loading={loading} onClick={() => handleHistoryAction('guide_new_chat')}>
                     Начать новую
                   </Button>
                 </div>
@@ -334,8 +388,8 @@ export default function InfinityExcursionPage() {
                             )}
                             <div className="min-w-0">
                               <p className="text-museum-100 text-sm font-medium leading-tight truncate">{exhibit.name}</p>
-                              {exhibit.roomNumber && (
-                                <p className="text-museum-500 text-xs mt-0.5">Зал {exhibit.roomNumber}</p>
+                              {exhibit.hall && (
+                                <p className="text-museum-500 text-xs mt-0.5">Зал {exhibit.hall}</p>
                               )}
                             </div>
                           </Card>
