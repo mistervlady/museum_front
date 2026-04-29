@@ -9,7 +9,7 @@ import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
 import AudioPlayer from '@/components/ui/AudioPlayer'
 import MarkdownContent from '@/components/ui/MarkdownContent'
-import { startReadyExcursion, getReadyExhibit } from '@/api/endpoints'
+import { startReadyExcursion, getReadyExhibit, nextReadyExhibit } from '@/api/endpoints'
 import type { ExcursionFormat, ExhibitDescription } from '@/types'
 
 type Step = 'format' | 'ready' | 'exhibit' | 'finish'
@@ -19,7 +19,9 @@ const TOTAL_EXHIBITS = 5 // фиксируется на стороне серв�
 export default function ReadyExcursionPage() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const museumId = params.get('museum') ?? 'default'
+  const museumIdParam = params.get('museum')
+  const museumId = Number(museumIdParam)
+  const resolvedMuseumId = Number.isFinite(museumId) ? museumId : 1
 
   const [step, setStep] = useState<Step>('format')
   const [format, setFormat] = useState<ExcursionFormat>('with_images')
@@ -27,13 +29,15 @@ export default function ReadyExcursionPage() {
   const [exhibitIndex, setExhibitIndex] = useState(1)
   const [exhibit, setExhibit] = useState<ExhibitDescription | null>(null)
   const [loading, setLoading] = useState(false)
+  const [totalExhibits, setTotalExhibits] = useState(TOTAL_EXHIBITS)
 
   // ── Format selection ───────────────────────────────────────────────────────
   const handleFormatConfirm = async () => {
     setLoading(true)
     try {
-      const session = await startReadyExcursion(museumId, format)
+      const session = await startReadyExcursion(resolvedMuseumId, format)
       setSessionId(session.sessionId)
+      setTotalExhibits(session.totalExhibits || TOTAL_EXHIBITS)
       setStep('ready')
     } catch (e) {
       alert((e as Error).message)
@@ -46,7 +50,7 @@ export default function ReadyExcursionPage() {
   const handleStart = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await getReadyExhibit(sessionId, 1)
+      const data = await getReadyExhibit(sessionId)
       setExhibit(data)
       setExhibitIndex(1)
       setStep('exhibit')
@@ -59,7 +63,7 @@ export default function ReadyExcursionPage() {
 
   // ── Next exhibit ───────────────────────────────────────────────────────────
   const handleNext = useCallback(async () => {
-    if (exhibitIndex >= TOTAL_EXHIBITS) {
+    if (exhibitIndex >= totalExhibits) {
       setStep('finish')
       return
     }
@@ -67,7 +71,7 @@ export default function ReadyExcursionPage() {
     setExhibit(null)
     const next = exhibitIndex + 1
     try {
-      const data = await getReadyExhibit(sessionId, next)
+      const data = await nextReadyExhibit(sessionId)
       setExhibit(data)
       setExhibitIndex(next)
     } catch (e) {
@@ -75,7 +79,7 @@ export default function ReadyExcursionPage() {
     } finally {
       setLoading(false)
     }
-  }, [exhibitIndex, sessionId])
+  }, [exhibitIndex, sessionId, totalExhibits])
 
   return (
     <>
@@ -94,7 +98,7 @@ export default function ReadyExcursionPage() {
               >
                 <div>
                   <h2 className="section-title">Формат экскурсии</h2>
-                  <p className="section-subtitle">Как ты хочешь получать информацию об экспонатах?</p>
+                  <p className="section-subtitle">Как Вы хотите получать информацию об экспонатах?</p>
                 </div>
 
                 <div className="flex flex-col gap-3">
@@ -112,8 +116,8 @@ export default function ReadyExcursionPage() {
                   </Card>
                   <Card
                     hoverable
-                    selected={format === 'text_only'}
-                    onClick={() => setFormat('text_only')}
+                    selected={format === 'without_images'}
+                    onClick={() => setFormat('without_images')}
                     className="flex items-center gap-4"
                   >
                     <FileText className="w-8 h-8 text-gold shrink-0" />
@@ -143,8 +147,8 @@ export default function ReadyExcursionPage() {
                 <div>
                   <h2 className="section-title">Экскурсия содержит аудио</h2>
                   <p className="section-subtitle max-w-xs mx-auto">
-                    Вы пройдёте по {TOTAL_EXHIBITS} экспонатам с текстовым и аудиоописанием.
-                    Надень наушники!
+                    Вы пройдёте по {totalExhibits} экспонатам с текстовым и аудиоописанием.
+                    Наденьте наушники!
                   </p>
                 </div>
                 <Button size="lg" loading={loading} onClick={handleStart}>
@@ -164,7 +168,7 @@ export default function ReadyExcursionPage() {
               >
                 {/* Progress */}
                 <div className="flex items-center gap-2">
-                  {Array.from({ length: TOTAL_EXHIBITS }).map((_, i) => (
+                  {Array.from({ length: totalExhibits }).map((_, i) => (
                     <div
                       key={i}
                       className={`h-1.5 rounded-full flex-1 transition-all duration-500 ${
@@ -174,7 +178,7 @@ export default function ReadyExcursionPage() {
                   ))}
                 </div>
                 <p className="text-museum-500 text-xs">
-                  Экспонат {exhibitIndex} из {TOTAL_EXHIBITS}
+                  Экспонат {exhibitIndex} из {totalExhibits}
                 </p>
 
                 {loading || !exhibit ? (
@@ -200,7 +204,7 @@ export default function ReadyExcursionPage() {
                     )}
 
                     <Button fullWidth onClick={handleNext}>
-                      {exhibitIndex < TOTAL_EXHIBITS ? (
+                      {exhibitIndex < totalExhibits ? (
                         <>
                           Следующий экспонат <ChevronRight className="w-4 h-4" />
                         </>

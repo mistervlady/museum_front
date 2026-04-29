@@ -1,27 +1,17 @@
 import { useState, useCallback, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Upload,
-  FileSpreadsheet,
-  CheckCircle2,
-  XCircle,
-  Database,
-  Image,
-  Map,
-  Users,
-  X,
-  AlertCircle,
-} from 'lucide-react'
+import { Upload, FileSpreadsheet, CheckCircle2, XCircle, Image, Map, Users, X, AlertCircle } from 'lucide-react'
 import clsx from 'clsx'
 import Header from '@/components/layout/Header'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
-import { uploadExcelFile, getAdminStats } from '@/api/endpoints'
-import type { UploadResult } from '@/types'
+import LayoutSchemeEditorModal from '@/components/admin/LayoutSchemeEditorModal'
+import { uploadExcelFile, getAdminStats, getMuseumLayout, saveMuseumLayout } from '@/api/endpoints'
+import type { UploadResult, MuseumLayoutScheme } from '@/types'
 
 interface Stats {
   museums: number
@@ -29,13 +19,70 @@ interface Stats {
   sessions: number
 }
 
+const createEmptyLayoutScheme = (): MuseumLayoutScheme => ({
+  version: 1,
+  buildingGrid: { rows: 4, cols: 5 },
+  buildings: {},
+})
+
+const createMockLayoutScheme = (): MuseumLayoutScheme => ({
+  version: 1,
+  buildingGrid: { rows: 4, cols: 5 },
+  buildings: {
+    mock_building_1: {
+      id: 'mock_building_1',
+      name: 'Корпус А',
+      position: { row: 1, col: 1 },
+      floorOrder: ['mock_floor_1'],
+      floors: {
+        mock_floor_1: {
+          id: 'mock_floor_1',
+          name: 'Этаж 1',
+          grid: { rows: 5, cols: 5 },
+          halls: {
+            mock_hall_1: {
+              id: 'mock_hall_1',
+              name: 'Зал 101',
+              position: { row: 1, col: 1 },
+            },
+            mock_hall_2: {
+              id: 'mock_hall_2',
+              name: 'Зал 102',
+              position: { row: 1, col: 2 },
+            },
+            mock_hall_3: {
+              id: 'mock_hall_3',
+              name: 'Зал 103',
+              position: { row: 2, col: 2 },
+            },
+          },
+          hallLinks: [
+            { fromHallId: 'mock_hall_1', toHallId: 'mock_hall_2' },
+            { fromHallId: 'mock_hall_2', toHallId: 'mock_hall_3' },
+          ],
+        },
+      },
+    },
+  },
+})
+
 export default function AdminPage() {
-  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const museumParam = params.get('museum')
+  const museumValue = Number(museumParam)
+  const museumId = Number.isFinite(museumValue) ? museumValue : undefined
+  const backTo = museumId ? `/excursion-type?museum=${museumId}` : '/'
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<UploadResult | null>(null)
   const [stats, setStats] = useState<Stats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
+  const [layoutOpen, setLayoutOpen] = useState(false)
+  const [layoutScheme, setLayoutScheme] = useState<MuseumLayoutScheme>(createEmptyLayoutScheme())
+  const [layoutLoading, setLayoutLoading] = useState(false)
+  const [layoutSaving, setLayoutSaving] = useState(false)
+  const [layoutLoadedOnce, setLayoutLoadedOnce] = useState(false)
+  const [layoutResult, setLayoutResult] = useState<{ success: boolean; message: string } | null>(null)
 
   // Load stats
   useEffect(() => {
@@ -66,13 +113,59 @@ export default function AdminPage() {
     setLoading(true)
     setResult(null)
     try {
-      const res = await uploadExcelFile(file)
+      const res = await uploadExcelFile(file, museumId)
       setResult(res)
       if (res.success) setFile(null)
     } catch (e) {
       setResult({ success: false, message: (e as Error).message })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleOpenLayoutEditor = async () => {
+    setLayoutOpen(true)
+
+    if (layoutLoadedOnce || layoutLoading) return
+
+    setLayoutLoading(true)
+    try {
+      const layout = await getMuseumLayout(museumId)
+      setLayoutScheme(layout)
+      setLayoutLoadedOnce(true)
+      setLayoutResult(null)
+    } catch {
+      setLayoutScheme(createMockLayoutScheme())
+      setLayoutLoadedOnce(true)
+      setLayoutResult({
+        success: true,
+        message: 'Сервер схемы пока недоступен. Загружена моковая схема для работы.',
+      })
+    } finally {
+      setLayoutLoading(false)
+    }
+  }
+
+  const handleSaveLayout = async (nextLayout: MuseumLayoutScheme) => {
+    setLayoutSaving(true)
+    try {
+      const response = await saveMuseumLayout(nextLayout, museumId)
+      setLayoutScheme(nextLayout)
+      setLayoutLoadedOnce(true)
+      setLayoutResult({
+        success: response.success,
+        message: response.message,
+      })
+      if (response.success) {
+        setLayoutOpen(false)
+      }
+    } catch (e) {
+      setLayoutResult({
+        success: false,
+        message: `Не удалось сохранить схему: ${(e as Error).message}`,
+      })
+    } finally {
+      setLayoutSaving(false)
     }
   }
 
@@ -84,9 +177,9 @@ export default function AdminPage() {
 
   return (
     <>
-      <Header title="Администратор" showBack backTo="/" />
+      <Header title="Администратор" showBack backTo={backTo} />
       <PageLayout>
-        <div className="py-6 flex flex-col gap-6">
+        <div className="py-6 flex flex-col gap-6 text-base">
 
           {/* Stats */}
           <div>
@@ -116,12 +209,7 @@ export default function AdminPage() {
           <div>
             <h2 className="section-title">Загрузить данные</h2>
             <p className="section-subtitle mb-4">
-              Загрузи Excel-файл с данными об экспонатах. Файл должен содержать колонки:
-              <code className="ml-1 text-gold">id</code>,
-              <code className="ml-1 text-gold">name</code>,
-              <code className="ml-1 text-gold">description</code>,
-              <code className="ml-1 text-gold">image_url</code>,
-              <code className="ml-1 text-gold">room</code>.
+              Загрузите Excel-файл с данными об экспонатах выбранного музея.
             </p>
 
             {/* Dropzone */}
@@ -142,13 +230,13 @@ export default function AdminPage() {
                 )}
               />
               {isDragActive ? (
-                <p className="text-gold font-medium">Отпусти файл здесь</p>
+                <p className="text-gold font-medium">Отпустите файл здесь</p>
               ) : (
                 <div>
                   <p className="text-museum-300 font-medium mb-1">
-                    Перетащи .xlsx файл сюда
+                    Перетащите .xlsx файл сюда
                   </p>
-                  <p className="text-museum-600 text-sm">или нажми для выбора</p>
+                  <p className="text-museum-600 text-sm">или нажмите для выбора</p>
                 </div>
               )}
             </div>
@@ -188,6 +276,18 @@ export default function AdminPage() {
               <Upload className="w-4 h-4" />
               Загрузить на сервер
             </Button>
+
+            <Button
+              fullWidth
+              variant="secondary"
+              className="mt-3 !border-museum-500 !text-museum-100 hover:!border-gold hover:!text-gold"
+              loading={layoutLoading}
+              onClick={handleOpenLayoutEditor}
+            >
+              <Map className="w-4 h-4" />
+              Настроить схему расположения залов
+            </Button>
+
           </div>
 
           {/* Result */}
@@ -238,40 +338,52 @@ export default function AdminPage() {
             )}
           </AnimatePresence>
 
-          {/* Format hint */}
-          <Card className="bg-museum-900/50">
-            <div className="flex items-start gap-3">
-              <Database className="w-5 h-5 text-gold mt-0.5 shrink-0" />
-              <div>
-                <p className="font-semibold text-museum-200 text-sm mb-2">Формат Excel-файла</p>
-                <div className="overflow-x-auto">
-                  <table className="text-xs text-museum-400 border-collapse">
-                    <thead>
-                      <tr>
-                        {['id', 'name', 'description', 'image_url', 'room'].map((col) => (
-                          <th key={col} className="border border-museum-700 px-3 py-1.5 text-gold font-mono text-left">
-                            {col}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        {['1', 'Название экспоната', 'Описание…', 'https://…/img.jpg', '3'].map((v, i) => (
-                          <td key={i} className="border border-museum-800 px-3 py-1.5 whitespace-nowrap text-museum-500">
-                            {v}
-                          </td>
-                        ))}
-                      </tr>
-                    </tbody>
-                  </table>
+          <AnimatePresence>
+            {layoutResult && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className={clsx(
+                  'rounded-2xl border p-4',
+                  layoutResult.success
+                    ? 'bg-green-950/40 border-green-700/50'
+                    : 'bg-red-950/40 border-red-700/50',
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  {layoutResult.success ? (
+                    <CheckCircle2 className="w-5 h-5 text-green-400 mt-0.5 shrink-0" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
+                  )}
+                  <div>
+                    <p className={clsx('font-semibold text-sm', layoutResult.success ? 'text-green-300' : 'text-red-300')}>
+                      {layoutResult.success ? 'Схема обновлена' : 'Ошибка схемы'}
+                    </p>
+                    <p className={clsx('text-sm mt-0.5', layoutResult.success ? 'text-green-400/80' : 'text-red-400/80')}>
+                      {layoutResult.message}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
         </div>
       </PageLayout>
+
+      <AnimatePresence>
+        {layoutOpen && (
+          <LayoutSchemeEditorModal
+            isOpen={layoutOpen}
+            initialLayout={layoutScheme}
+            saving={layoutSaving}
+            onClose={() => setLayoutOpen(false)}
+            onSave={handleSaveLayout}
+          />
+        )}
+      </AnimatePresence>
     </>
   )
 }

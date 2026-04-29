@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Settings, Map } from 'lucide-react'
+import { ArrowLeft, Settings, Map, Moon, Sun } from 'lucide-react'
 import clsx from 'clsx'
 
 interface HeaderProps {
@@ -19,6 +20,18 @@ export default function Header({
 }: HeaderProps) {
   const navigate = useNavigate()
   const location = useLocation()
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window === 'undefined') return 'light'
+    const stored = window.localStorage.getItem('theme')
+    return stored === 'dark' ? 'dark' : 'light'
+  })
+
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.remove('theme-light', 'theme-dark')
+    root.classList.add(`theme-${theme}`)
+    window.localStorage.setItem('theme', theme)
+  }, [theme])
 
   const handleBack = () => {
     if (backTo) navigate(backTo)
@@ -54,16 +67,25 @@ export default function Header({
             </div>
           )}
           <span className="font-serif font-bold text-museum-50 text-sm">
-            {title ?? 'МузейГид'}
+            {title ?? 'Музейный Гид'}
           </span>
         </div>
 
         {/* Right */}
-        <div className="w-10 flex justify-end">
+        <div className="w-24 flex justify-end gap-2">
+          <button
+            onClick={() => setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))}
+            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-museum-800 text-museum-400 hover:text-museum-100 transition-colors"
+            title={theme === 'light' ? 'Темная тема' : 'Светлая тема'}
+          >
+            {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+          </button>
+
           {showAdmin && location.pathname !== '/admin' && (
             <button
               onClick={() => navigate('/admin')}
               className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-museum-800 text-museum-400 hover:text-museum-100 transition-colors"
+              title="Админ-панель"
             >
               <Settings className="w-5 h-5" />
             </button>

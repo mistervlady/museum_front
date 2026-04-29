@@ -1,14 +1,16 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Map, Sparkles, ArrowRight } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
+import { getMuseums } from '@/api/endpoints'
+import type { Museum } from '@/types'
 
-// Статические музеи — при интеграции с бэкендом заменить на getMuseums()
-const MUSEUMS = [
+const FALLBACK_MUSEUMS: Museum[] = [
   {
-    id: 'krasnoyarsk',
+    id: 1,
     name: 'Красноярский художественный музей',
     description: 'Классическое и современное искусство Сибири',
     accent: 'от XVIII века до современности',
@@ -27,14 +29,31 @@ const itemVariants = {
 
 export default function WelcomePage() {
   const navigate = useNavigate()
+  const [museums, setMuseums] = useState<Museum[]>(FALLBACK_MUSEUMS)
 
-  const handleMuseum = (id: string) => {
+  useEffect(() => {
+    getMuseums()
+      .then((items) => {
+        if (items.length > 0) {
+          setMuseums(
+            items.map((item, index) => ({
+              ...item,
+              description: item.description ?? 'Интерактивные экскурсии и AI-гид',
+              accent: item.accent ?? (index % 2 === 0 ? 'Уникальная коллекция' : 'Экспонаты разных эпох'),
+            })),
+          )
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  const handleMuseum = (id: number) => {
     navigate(`/excursion-type?museum=${id}`)
   }
 
   return (
     <>
-      <Header showAdmin />
+      <Header />
       <PageLayout>
         <motion.div
           className="flex flex-col gap-8 py-10"
@@ -52,7 +71,7 @@ export default function WelcomePage() {
             </h1>
             <p className="text-museum-400 text-sm leading-relaxed max-w-sm mx-auto">
               Это умный музейный гид с персонализированными маршрутами и AI-описаниями экспонатов.
-              Выбери музей, чтобы начать.
+              Выберите музей, чтобы начать.
             </p>
           </motion.div>
 
@@ -72,7 +91,7 @@ export default function WelcomePage() {
             <p className="text-museum-400 text-xs uppercase tracking-widest font-medium">
               Выберите музей
             </p>
-            {MUSEUMS.map((museum) => (
+            {museums.map((museum) => (
               <button
                 key={museum.id}
                 onClick={() => handleMuseum(museum.id)}

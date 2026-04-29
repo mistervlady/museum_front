@@ -1,0 +1,16 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai_museum_frontend
+    ports:
+      - "5173:80"
+    networks:
+      - ai_museum_net
+    restart: unless-stopped
+
+networks:
+  ai_museum_net:
+    external: true
+    name: ai_museum_shared_net

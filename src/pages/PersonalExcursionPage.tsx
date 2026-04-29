@@ -16,13 +16,13 @@ import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
 import AudioPlayer from '@/components/ui/AudioPlayer'
 import MarkdownContent from '@/components/ui/MarkdownContent'
-import VoiceRecorder from '@/components/ui/VoiceRecorder'
 import {
   startPersonalExcursion,
   getPersonalExhibitDescription,
   nextPersonalExhibit,
   askPersonalQuestion,
-  transcribeAudio,
+  trackExhibitQuestion,
+  getMostInteresting,
 } from '@/api/endpoints'
 import type { ExcursionFormat, PersonalExcursionSession, ExhibitDescription } from '@/types'
 
@@ -47,7 +47,12 @@ const STYLE_EXAMPLES = [
 export default function PersonalExcursionPage() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const museumId = params.get('museum') ?? 'default'
+  const museumIdParam = params.get('museum')
+  const museumId = Number(museumIdParam)
+  const resolvedMuseumId = Number.isFinite(museumId) ? museumId : 1
+  const userIdParam = params.get('user')
+  const userIdValue = Number(userIdParam)
+  const resolvedUserId = Number.isFinite(userIdValue) ? userIdValue : null
 
   const [step, setStep] = useState<Step>('style')
   const [style, setStyle] = useState('')
@@ -70,12 +75,6 @@ export default function PersonalExcursionPage() {
     setStep('format')
   }
 
-  const handleStyleVoice = useCallback(async (blob: Blob) => {
-    const text = await transcribeAudio(blob)
-    setStyle(text)
-    setStep('format')
-  }, [])
-
   // ── Format → Description ───────────────────────────────────────────────────
   const handleFormatNext = () => setStep('description')
 
@@ -90,7 +89,7 @@ export default function PersonalExcursionPage() {
     setLoading(true)
     try {
       const s = await startPersonalExcursion({
-        museumId,
+        museumId: resolvedMuseumId,
         style,
         format,
         description: userDescription,
@@ -126,7 +125,16 @@ export default function PersonalExcursionPage() {
   const handleNextExhibit = useCallback(async () => {
     if (!session) return
     const next = exhibitIndex + 1
-    if (next > (session.exhibits?.length ?? exhibitCount)) {
+    if (next > (session.totalExhibits || exhibitCount)) {
+      // при завершении — попытаемся получить финальное подсказочное сообщение по интересам
+      if (resolvedUserId) {
+        try {
+          const top = await getMostInteresting(resolvedUserId)
+          setFinalMessage(`Насладитесь всей красотой экспоната ${top.name} в нашем музее`)
+        } catch (e) {
+          // не критично
+        }
+      }
       setStep('finish')
       return
     }
@@ -152,6 +160,14 @@ export default function PersonalExcursionPage() {
     try {
       const res = await askPersonalQuestion(session.sessionId, q)
       setAnswer({ text: res.answer, audioUrl: res.audioUrl })
+      // Трекгинг: если известен user и id текущего экспоната — отправляем на сервер
+      if (resolvedUserId && exhibit?.exhibitId) {
+        try {
+          await trackExhibitQuestion(resolvedUserId, exhibit.exhibitId)
+        } catch (err) {
+          // ignore
+        }
+      }
       setQuestion('')
     } catch (e) {
       alert((e as Error).message)
@@ -160,12 +176,9 @@ export default function PersonalExcursionPage() {
     }
   }, [session])
 
-  const handleVoiceQuestion = useCallback(async (blob: Blob) => {
-    const text = await transcribeAudio(blob)
-    if (text) await handleAsk(text)
-  }, [handleAsk])
+  const [finalMessage, setFinalMessage] = useState<string | null>(null)
 
-  const totalExhibits = session?.exhibits?.length ?? exhibitCount
+  const totalExhibits = session?.totalExhibits ?? exhibitCount
 
   return (
     <>
@@ -186,7 +199,7 @@ export default function PersonalExcursionPage() {
                 <div>
                   <h2 className="section-title">Стиль экскурсии</h2>
                   <p className="section-subtitle">
-                    Выбери, в какой манере гид будет рассказывать. Напиши свой вариант или выбери пример.
+                    Выберите, в какой манере гид будет рассказывать. Напишите свой вариант или выберите пример.
                   </p>
                 </div>
 
@@ -207,25 +220,22 @@ export default function PersonalExcursionPage() {
                 </div>
 
                 <div>
-                  <p className="text-museum-500 text-xs mb-2">или введи свой:</p>
+                  <p className="text-museum-500 text-xs mb-2">или введите свой:</p>
                   <textarea
                     className="textarea h-24"
-                    placeholder="Напиши стиль рассказчика…"
+                    placeholder="Напишите стиль рассказчика…"
                     value={style}
                     onChange={(e) => setStyle(e.target.value)}
                   />
                 </div>
 
-                <div className="flex gap-2">
-                  <Button
-                    fullWidth
-                    onClick={handleStyleSubmit}
-                    disabled={!style.trim()}
-                  >
-                    Далее
-                  </Button>
-                  <VoiceRecorder onRecorded={handleStyleVoice} />
-                </div>
+                <Button
+                  fullWidth
+                  onClick={handleStyleSubmit}
+                  disabled={!style.trim()}
+                >
+                  Далее
+                </Button>
               </motion.div>
             )}
 
@@ -240,7 +250,7 @@ export default function PersonalExcursionPage() {
               >
                 <div>
                   <h2 className="section-title">Формат экскурсии</h2>
-                  <p className="section-subtitle">Хочешь видеть фотографии экспонатов?</p>
+                  <p className="section-subtitle">Хотите видеть фотографии экспонатов?</p>
                 </div>
 
                 <div className="flex flex-col gap-3">
@@ -251,7 +261,7 @@ export default function PersonalExcursionPage() {
                       <p className="text-museum-500 text-sm">Фото + текст + аудио</p>
                     </div>
                   </Card>
-                  <Card hoverable selected={format === 'text_only'} onClick={() => setFormat('text_only')} className="flex items-center gap-4">
+                  <Card hoverable selected={format === 'without_images'} onClick={() => setFormat('without_images')} className="flex items-center gap-4">
                     <FileText className="w-8 h-8 text-gold shrink-0" />
                     <div>
                       <p className="font-semibold text-museum-100">Только текст и аудио</p>
@@ -274,9 +284,9 @@ export default function PersonalExcursionPage() {
                 className="flex flex-col gap-5"
               >
                 <div>
-                  <h2 className="section-title">Твои интересы</h2>
+                  <h2 className="section-title">Ваши интересы</h2>
                   <p className="section-subtitle">
-                    Кратко опиши, что хочешь увидеть — темы, жанры, эпохи, настроение.
+                    Кратко опишите, что хотите увидеть: темы, жанры, эпохи, настроение.
                   </p>
                 </div>
                 <textarea
@@ -344,27 +354,19 @@ export default function PersonalExcursionPage() {
                   </p>
                 </div>
 
-                {session.mapImageUrl ? (
-                  <img
-                    src={session.mapImageUrl}
-                    alt="Карта маршрута"
-                    className="w-full rounded-2xl border border-museum-700"
-                  />
-                ) : (
-                  <div className="rounded-2xl border border-museum-700 bg-museum-900 flex items-center justify-center py-12 text-museum-600 text-sm">
-                    Карта маршрута не доступна
-                  </div>
-                )}
+                <div className="rounded-2xl border border-museum-700 bg-museum-900 flex items-center justify-center py-12 text-museum-600 text-sm">
+                  Карта маршрута не доступна
+                </div>
 
                 {/* Exhibit list */}
-                {session.exhibits && session.exhibits.length > 0 && (
+                {session.routeIds.length > 0 && (
                   <div className="flex flex-col gap-2">
-                    {session.exhibits.map((ex, i) => (
-                      <div key={ex.id} className="flex items-center gap-3 px-4 py-2 rounded-xl bg-museum-900 border border-museum-700">
+                    {session.routeIds.map((exhibitId, i) => (
+                      <div key={exhibitId} className="flex items-center gap-3 px-4 py-2 rounded-xl bg-museum-900 border border-museum-700">
                         <span className="w-6 h-6 rounded-full bg-gold/20 border border-gold/40 text-gold text-xs flex items-center justify-center font-bold shrink-0">
                           {i + 1}
                         </span>
-                        <span className="text-museum-200 text-sm">{ex.name}</span>
+                        <span className="text-museum-200 text-sm">Экспонат {exhibitId}</span>
                       </div>
                     ))}
                   </div>
@@ -418,7 +420,7 @@ export default function PersonalExcursionPage() {
                     {/* Q&A */}
                     <div className="rounded-2xl bg-museum-900 border border-museum-700 p-4 flex flex-col gap-3">
                       <p className="text-museum-400 text-xs flex items-center gap-1.5">
-                        <MessageSquare className="w-3.5 h-3.5" /> Задай вопрос об экспонате
+                        <MessageSquare className="w-3.5 h-3.5" /> Задайте вопрос об экспонате
                       </p>
 
                       {answer && (
@@ -433,7 +435,7 @@ export default function PersonalExcursionPage() {
                       <div className="flex gap-2">
                         <input
                           className="input flex-1 py-2 text-sm"
-                          placeholder="Введи вопрос…"
+                          placeholder="Введите вопрос…"
                           value={question}
                           onChange={(e) => setQuestion(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleAsk(question)}
@@ -446,7 +448,6 @@ export default function PersonalExcursionPage() {
                           {asLoading ? <Spinner size="sm" /> : <Send className="w-4 h-4" />}
                         </button>
                       </div>
-                      <VoiceRecorder onRecorded={handleVoiceQuestion} disabled={asLoading} />
                     </div>
 
                     <Button fullWidth onClick={handleNextExhibit}>
@@ -471,7 +472,7 @@ export default function PersonalExcursionPage() {
                 <div>
                   <h2 className="section-title">Экскурсия завершена!</h2>
                   <p className="section-subtitle max-w-xs mx-auto">
-                    Надеемся, вам понравилось. До новых встреч в музее!
+                    {finalMessage ?? 'Надеемся, вам понравилось. До новых встреч в музее!'}
                   </p>
                 </div>
                 <div className="flex flex-col gap-3 w-full">
