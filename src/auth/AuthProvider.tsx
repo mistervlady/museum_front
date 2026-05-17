@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(freshUser)
       return freshUser
     },
-    [setUser, setToken],
+    [],
   )
 
   const login = useCallback(

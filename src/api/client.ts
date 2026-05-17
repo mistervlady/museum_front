@@ -1,4 +1,4 @@
-import axios, { AxiosHeaders } from 'axios'
+import axios, { type AxiosRequestHeaders } from 'axios'
 import { clearStoredToken, getStoredToken } from '@/auth/token'
 
 const api = axios.create({
@@ -12,8 +12,8 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = getStoredToken()
   if (token) {
-    const headers = AxiosHeaders.from(config.headers)
-    headers.set('Authorization', `Bearer ${token}`)
+    const headers = (config.headers ?? {}) as AxiosRequestHeaders
+    headers.Authorization = `Bearer ${token}`
     config.headers = headers
   }
   return config
