@@ -73,6 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const applySession = useCallback(
     async (session: AuthSession) => {
+      if (!session.token && !session.user) {
+        throw new Error('Не удалось получить данные авторизации')
+      }
       if (session.token) {
         setStoredToken(session.token)
         setToken(session.token)
