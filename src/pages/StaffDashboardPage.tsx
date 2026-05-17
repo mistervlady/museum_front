@@ -19,6 +19,7 @@ import { useAuth } from '@/auth/AuthProvider'
 export default function StaffDashboardPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const displayName = user?.name ?? user?.email
   const [museums, setMuseums] = useState<StaffMuseum[]>([])
   const [museumsLoading, setMuseumsLoading] = useState(true)
   const [museumsError, setMuseumsError] = useState<string | null>(null)
@@ -146,7 +147,7 @@ export default function StaffDashboardPage() {
         >
           <div>
             <h2 className="section-title">
-              {user?.name || user?.email ? `Здравствуйте, ${user?.name ?? user?.email}` : 'Здравствуйте'}
+              {displayName ? `Здравствуйте, ${displayName}` : 'Здравствуйте'}
             </h2>
             <p className="section-subtitle">
               Управляйте музеями, приглашайте сотрудников и переходите в админку.

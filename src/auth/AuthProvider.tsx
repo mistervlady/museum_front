@@ -24,20 +24,6 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-const applySession = async (session: AuthSession, setUser: (user: StaffUser | null) => void, setToken: (token: string | null) => void) => {
-  if (session.token) {
-    setStoredToken(session.token)
-    setToken(session.token)
-  }
-  if (session.user) {
-    setUser(session.user)
-    return session.user
-  }
-  const freshUser = await getCurrentUser()
-  setUser(freshUser)
-  return freshUser
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<StaffUser | null>(null)
   const [token, setToken] = useState<string | null>(() => getStoredToken())
@@ -85,20 +71,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('auth:logout', handleLogout)
   }, [logout])
 
+  const applySession = useCallback(
+    async (session: AuthSession) => {
+      if (session.token) {
+        setStoredToken(session.token)
+        setToken(session.token)
+      }
+      if (session.user) {
+        setUser(session.user)
+        return session.user
+      }
+      const freshUser = await getCurrentUser()
+      setUser(freshUser)
+      return freshUser
+    },
+    [setUser, setToken],
+  )
+
   const login = useCallback(
     async (payload: LoginPayload) => {
       const session = await loginStaff(payload)
-      return applySession(session, setUser, setToken)
+      return applySession(session)
     },
-    [],
+    [applySession],
   )
 
   const register = useCallback(
     async (payload: RegisterPayload) => {
       const session = await registerStaff(payload)
-      return applySession(session, setUser, setToken)
+      return applySession(session)
     },
-    [],
+    [applySession],
   )
 
   const value = useMemo(
