@@ -1,4 +1,5 @@
 import api from './client'
+import { isMockEnabled, mockApi } from './mock'
 import type {
   AuthSession,
   LoginPayload,
@@ -19,6 +20,11 @@ import type {
 } from '@/types'
 
 const AUDIO_FORMAT = 'with_audio'
+
+const useMocks = isMockEnabled()
+
+const withMock = <T>(realCall: () => Promise<T>, mockCall: () => Promise<T>) =>
+  useMocks ? mockCall() : realCall()
 
 const toExhibitDescription = (event: ExcursionEventResponse): ExhibitDescription => ({
   text: event.description ?? event.text ?? '',
@@ -41,22 +47,39 @@ const toAuthSession = (payload: AuthSessionResponse): AuthSession => ({
 })
 
 export const registerStaff = (payload: RegisterPayload) =>
-  api.post<AuthSessionResponse>('/auth/register', payload).then((r) => toAuthSession(r.data))
+  withMock(
+    () => api.post<AuthSessionResponse>('/auth/register', payload).then((r) => toAuthSession(r.data)),
+    () => mockApi.registerStaff(payload),
+  )
 
 export const loginStaff = (payload: LoginPayload) =>
-  api.post<AuthSessionResponse>('/auth/login', payload).then((r) => toAuthSession(r.data))
+  withMock(
+    () => api.post<AuthSessionResponse>('/auth/login', payload).then((r) => toAuthSession(r.data)),
+    () => mockApi.loginStaff(payload),
+  )
 
-export const getCurrentUser = () => api.get<StaffUser>('/auth/me').then((r) => r.data)
+export const getCurrentUser = () =>
+  withMock(
+    () => api.get<StaffUser>('/auth/me').then((r) => r.data),
+    () => mockApi.getCurrentUser(),
+  )
 
 export const getStaffMuseums = () =>
-  api.get<{ items?: StaffMuseum[]; museums?: StaffMuseum[] } | StaffMuseum[]>('/staff/museums').then((r) => {
-    const data = r.data
-    if (Array.isArray(data)) return data
-    return data.items ?? data.museums ?? []
-  })
+  withMock(
+    () =>
+      api.get<{ items?: StaffMuseum[]; museums?: StaffMuseum[] } | StaffMuseum[]>('/staff/museums').then((r) => {
+        const data = r.data
+        if (Array.isArray(data)) return data
+        return data.items ?? data.museums ?? []
+      }),
+    () => mockApi.getStaffMuseums(),
+  )
 
 export const createMuseum = (payload: { name: string; description?: string }) =>
-  api.post<StaffMuseum>('/museums', payload).then((r) => r.data)
+  withMock(
+    () => api.post<StaffMuseum>('/museums', payload).then((r) => r.data),
+    () => mockApi.createMuseum(payload),
+  )
 
 interface InviteResponse {
   token?: string
@@ -67,108 +90,158 @@ interface InviteResponse {
 }
 
 export const createMuseumInvite = (museumId: number) =>
-  api.post<InviteResponse>(`/museums/${museumId}/invites`).then((r) => ({
-    token: r.data.token ?? r.data.invite_token ?? '',
-    url: r.data.url ?? r.data.invite_url,
-    expiresAt: r.data.expires_at,
-  }) satisfies StaffInvite)
+  withMock(
+    () =>
+      api.post<InviteResponse>(`/museums/${museumId}/invites`).then((r) => ({
+        token: r.data.token ?? r.data.invite_token ?? '',
+        url: r.data.url ?? r.data.invite_url,
+        expiresAt: r.data.expires_at,
+      }) satisfies StaffInvite),
+    () => mockApi.createMuseumInvite(museumId),
+  )
 
 export const acceptInvite = (token: string) =>
-  api.post('/invites/accept', { token }).then((r) => r.data)
+  withMock(
+    () => api.post('/invites/accept', { token }).then((r) => r.data),
+    () => mockApi.acceptInvite(),
+  )
 
 export const getMuseumStaff = (museumId: number) =>
-  api.get<{ items?: StaffMember[]; staff?: StaffMember[] } | StaffMember[]>(`/museums/${museumId}/staff`).then((r) => {
-    const data = r.data
-    if (Array.isArray(data)) return data
-    return data.items ?? data.staff ?? []
-  })
+  withMock(
+    () =>
+      api
+        .get<{ items?: StaffMember[]; staff?: StaffMember[] } | StaffMember[]>(`/museums/${museumId}/staff`)
+        .then((r) => {
+          const data = r.data
+          if (Array.isArray(data)) return data
+          return data.items ?? data.staff ?? []
+        }),
+    () => mockApi.getMuseumStaff(museumId),
+  )
 
 // ─── Museums ─────────────────────────────────────────────────────────────────
 
 export const getMuseums = () =>
-  api.get<{ items: Museum[] }>('/museums').then((r) => r.data.items)
+  withMock(
+    () => api.get<{ items: Museum[] }>('/museums').then((r) => r.data.items),
+    () => mockApi.getMuseums(),
+  )
 
 // ─── Personal Excursion ───────────────────────────────────────────────────────
 
 export const startPersonalExcursion = (params: PersonalExcursionSetupParams) =>
-  api
-    .post<ExcursionEventResponse>('excursion/personal/start', {
-      museum_id: params.museumId,
-      style: params.style,
-      format: params.format,
-      audio_format: AUDIO_FORMAT,
-      user_description: params.description,
-      route_length: params.exhibitCount,
-    })
-    .then((r) => {
-      const routeIds = r.data.route_ids ?? []
-      return {
-        sessionId: r.data.session_id,
-        routeIds,
-        totalExhibits: routeIds.length || params.exhibitCount,
-        greeting: r.data.greeting,
-      } satisfies PersonalExcursionSession
-    })
+  withMock(
+    () =>
+      api
+        .post<ExcursionEventResponse>('excursion/personal/start', {
+          museum_id: params.museumId,
+          style: params.style,
+          format: params.format,
+          audio_format: AUDIO_FORMAT,
+          user_description: params.description,
+          route_length: params.exhibitCount,
+        })
+        .then((r) => {
+          const routeIds = r.data.route_ids ?? []
+          return {
+            sessionId: r.data.session_id,
+            routeIds,
+            totalExhibits: routeIds.length || params.exhibitCount,
+            greeting: r.data.greeting,
+          } satisfies PersonalExcursionSession
+        }),
+    () => mockApi.startPersonalExcursion({ museumId: params.museumId, exhibitCount: params.exhibitCount }),
+  )
 
 export const getPersonalExhibitDescription = (sessionId: string) =>
-  api
-    .get<ExcursionEventResponse>('/excursion/personal/exhibit', {
-      headers: { 'x-session-id': sessionId },
-    })
-    .then((r) => toExhibitDescription(r.data))
+  withMock(
+    () =>
+      api
+        .get<ExcursionEventResponse>('/excursion/personal/exhibit', {
+          headers: { 'x-session-id': sessionId },
+        })
+        .then((r) => toExhibitDescription(r.data)),
+    () => mockApi.getPersonalExhibitDescription(sessionId),
+  )
 
 export const nextPersonalExhibit = (sessionId: string) =>
-  api
-    .get<ExcursionEventResponse>('/excursion/personal/next', {
-      headers: { 'x-session-id': sessionId },
-    })
-    .then((r) => toExhibitDescription(r.data))
+  withMock(
+    () =>
+      api
+        .get<ExcursionEventResponse>('/excursion/personal/next', {
+          headers: { 'x-session-id': sessionId },
+        })
+        .then((r) => toExhibitDescription(r.data)),
+    () => mockApi.nextPersonalExhibit(sessionId),
+  )
 
 export const askPersonalQuestion = (sessionId: string, question: string) =>
-  api
-    .post<ExcursionEventResponse>(
-      '/excursion/personal/message',
-      { text: question },
-      { headers: { 'x-session-id': sessionId } },
-    )
-    .then((r) => ({ answer: r.data.text ?? '', audioUrl: r.data.audio_url }))
+  withMock(
+    () =>
+      api
+        .post<ExcursionEventResponse>(
+          '/excursion/personal/message',
+          { text: question },
+          { headers: { 'x-session-id': sessionId } },
+        )
+        .then((r) => ({ answer: r.data.text ?? '', audioUrl: r.data.audio_url })),
+    () => mockApi.askPersonalQuestion(question),
+  )
 
 export const trackExhibitQuestion = (userId: number, exhibitId: number) =>
-  api.post('/exhibit-question', { user_id: userId, exhibit_id: exhibitId }).then((r) => r.data)
+  withMock(
+    () => api.post('/exhibit-question', { user_id: userId, exhibit_id: exhibitId }).then((r) => r.data),
+    () => mockApi.trackExhibitQuestion(),
+  )
 
 export const getMostInteresting = (userId: number) =>
-  api.get(`/users/${userId}/most-interesting-exhibit`).then((r) => r.data)
+  withMock(
+    () => api.get(`/users/${userId}/most-interesting-exhibit`).then((r) => r.data),
+    () => mockApi.getMostInteresting(),
+  )
 
 // ─── Ready Excursion ──────────────────────────────────────────────────────────
 
 export const startReadyExcursion = (museumId: number, format: string) =>
-  api
-    .post<ExcursionEventResponse>('/excursion/ready/start', {
-      museum_id: museumId,
-      format,
-      audio_format: AUDIO_FORMAT,
-    })
-    .then((r) => {
-      const routeIds = r.data.route_ids ?? []
-      return {
-        sessionId: r.data.session_id,
-        totalExhibits: routeIds.length || 5,
-      } satisfies ReadyExcursionSession
-    })
+  withMock(
+    () =>
+      api
+        .post<ExcursionEventResponse>('/excursion/ready/start', {
+          museum_id: museumId,
+          format,
+          audio_format: AUDIO_FORMAT,
+        })
+        .then((r) => {
+          const routeIds = r.data.route_ids ?? []
+          return {
+            sessionId: r.data.session_id,
+            totalExhibits: routeIds.length || 5,
+          } satisfies ReadyExcursionSession
+        }),
+    () => mockApi.startReadyExcursion(),
+  )
 
 export const getReadyExhibit = (sessionId: string) =>
-  api
-    .get<ExcursionEventResponse>('/excursion/ready/exhibit', {
-      headers: { 'x-session-id': sessionId },
-    })
-    .then((r) => toExhibitDescription(r.data))
+  withMock(
+    () =>
+      api
+        .get<ExcursionEventResponse>('/excursion/ready/exhibit', {
+          headers: { 'x-session-id': sessionId },
+        })
+        .then((r) => toExhibitDescription(r.data)),
+    () => mockApi.getReadyExhibit(sessionId),
+  )
 
 export const nextReadyExhibit = (sessionId: string) =>
-  api
-    .get<ExcursionEventResponse>('/excursion/ready/next', {
-      headers: { 'x-session-id': sessionId },
-    })
-    .then((r) => toExhibitDescription(r.data))
+  withMock(
+    () =>
+      api
+        .get<ExcursionEventResponse>('/excursion/ready/next', {
+          headers: { 'x-session-id': sessionId },
+        })
+        .then((r) => toExhibitDescription(r.data)),
+    () => mockApi.nextReadyExhibit(sessionId),
+  )
 
 // ─── Infinity Excursion ───────────────────────────────────────────────────────
 
@@ -177,83 +250,114 @@ export const startInfinityExcursion = (payload: {
   museumId: number
   action?: string
 }) =>
-  api
-    .post<ExcursionEventResponse>('/excursion/infinity/start', {
-      user_id: payload.userId,
-      museum_id: payload.museumId,
-      audio_format: AUDIO_FORMAT,
-      action: payload.action,
-    })
-    .then((r) => r.data)
+  withMock(
+    () =>
+      api
+        .post<ExcursionEventResponse>('/excursion/infinity/start', {
+          user_id: payload.userId,
+          museum_id: payload.museumId,
+          audio_format: AUDIO_FORMAT,
+          action: payload.action,
+        })
+        .then((r) => r.data),
+    () => mockApi.startInfinityExcursion({ action: payload.action }),
+  )
 
 export const sendInfinityMessage = (sessionId: string, text: string) =>
-  api
-    .post<ExcursionEventResponse>(
-      '/excursion/infinity/message',
-      { text },
-      { headers: { 'x-session-id': sessionId } },
-    )
-    .then((r) => r.data)
+  withMock(
+    () =>
+      api
+        .post<ExcursionEventResponse>(
+          '/excursion/infinity/message',
+          { text },
+          { headers: { 'x-session-id': sessionId } },
+        )
+        .then((r) => r.data),
+    () => mockApi.sendInfinityMessage(sessionId, text),
+  )
 
 export const requestExhibitSuggestions = (sessionId: string) =>
-  api
-    .post<ExcursionEventResponse>('/excursion/infinity/suggest-exhibits', null, {
-      headers: { 'x-session-id': sessionId },
-    })
-    .then((r) => r.data)
+  withMock(
+    () =>
+      api
+        .post<ExcursionEventResponse>('/excursion/infinity/suggest-exhibits', null, {
+          headers: { 'x-session-id': sessionId },
+        })
+        .then((r) => r.data),
+    () => mockApi.requestExhibitSuggestions(sessionId),
+  )
 
 export const chooseExhibit = (sessionId: string, exhibitId: number) =>
-  api
-    .post<ExcursionEventResponse>(
-      '/excursion/infinity/choose-exhibit',
-      { exhibit_id: exhibitId },
-      { headers: { 'x-session-id': sessionId } },
-    )
-    .then((r) => r.data)
+  withMock(
+    () =>
+      api
+        .post<ExcursionEventResponse>(
+          '/excursion/infinity/choose-exhibit',
+          { exhibit_id: exhibitId },
+          { headers: { 'x-session-id': sessionId } },
+        )
+        .then((r) => r.data),
+    () => mockApi.chooseExhibit(sessionId, exhibitId),
+  )
 
 export const returnToGuide = (sessionId: string) =>
-  api
-    .post<ExcursionEventResponse>('/excursion/infinity/return-to-guide', null, {
-      headers: { 'x-session-id': sessionId },
-    })
-    .then((r) => r.data)
+  withMock(
+    () =>
+      api
+        .post<ExcursionEventResponse>('/excursion/infinity/return-to-guide', null, {
+          headers: { 'x-session-id': sessionId },
+        })
+        .then((r) => r.data),
+    () => mockApi.returnToGuide(sessionId),
+  )
 
 // ─── STT ─────────────────────────────────────────────────────────────────────
 
-export const transcribeAudio = (blob: Blob) => {
-  const form = new FormData()
-  form.append('file', blob, 'recording.webm')
-  return api
-    .post<{ text: string }>('/stt/transcribe', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-    .then((r) => r.data.text)
-}
+export const transcribeAudio = (blob: Blob) =>
+  withMock(
+    () => {
+      const form = new FormData()
+      form.append('file', blob, 'recording.webm')
+      return api
+        .post<{ text: string }>('/stt/transcribe', form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        .then((r) => r.data.text)
+    },
+    () => mockApi.transcribeAudio(),
+  )
 
 // ─── Admin ────────────────────────────────────────────────────────────────────
 
-export const uploadExcelFile = (file: File, museumId?: number) => {
-  const form = new FormData()
-  form.append('file', file)
-  return api
-    .post<{ success: boolean; message: string; rows_processed?: number; errors?: string[] }>(
-      '/admin/upload',
-      form,
-      {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        params: museumId ? { museum_id: museumId } : undefined,
-      },
-    )
-    .then((r) => ({
-      success: r.data.success,
-      message: r.data.message,
-      rowsProcessed: r.data.rows_processed,
-      errors: r.data.errors,
-    } satisfies UploadResult))
-}
+export const uploadExcelFile = (file: File, museumId?: number) =>
+  withMock(
+    () => {
+      const form = new FormData()
+      form.append('file', file)
+      return api
+        .post<{ success: boolean; message: string; rows_processed?: number; errors?: string[] }>(
+          '/admin/upload',
+          form,
+          {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            params: museumId ? { museum_id: museumId } : undefined,
+          },
+        )
+        .then((r) => ({
+          success: r.data.success,
+          message: r.data.message,
+          rowsProcessed: r.data.rows_processed,
+          errors: r.data.errors,
+        } satisfies UploadResult))
+    },
+    () => mockApi.uploadExcelFile(file),
+  )
 
 export const getAdminStats = () =>
-  api.get<{ museums: number; exhibits: number; sessions: number }>('/admin/stats').then((r) => r.data)
+  withMock(
+    () => api.get<{ museums: number; exhibits: number; sessions: number }>('/admin/stats').then((r) => r.data),
+    () => mockApi.getAdminStats(),
+  )
 
 const toNodeKey = (row: number, col: number) => `${row}:${col}`
 
@@ -336,17 +440,25 @@ const toLayoutPayload = (layout: MuseumLayoutScheme): MuseumLayoutPayload => {
 }
 
 export const getMuseumLayout = (museumId?: number) =>
-  api
-    .get<MuseumLayoutScheme>('/admin/layout', {
-      params: museumId ? { museum_id: museumId } : undefined,
-    })
-    .then((r) => normalizeLayoutScheme(r.data))
+  withMock(
+    () =>
+      api
+        .get<MuseumLayoutScheme>('/admin/layout', {
+          params: museumId ? { museum_id: museumId } : undefined,
+        })
+        .then((r) => normalizeLayoutScheme(r.data)),
+    () => mockApi.getMuseumLayout(museumId).then((layout) => normalizeLayoutScheme(layout)),
+  )
 
 export const saveMuseumLayout = (layout: MuseumLayoutScheme, museumId?: number) =>
-  api
-    .post<{ success: boolean; message: string }>(
-      '/admin/layout',
-      toLayoutPayload(layout),
-      { params: museumId ? { museum_id: museumId } : undefined },
-    )
-    .then((r) => r.data)
+  withMock(
+    () =>
+      api
+        .post<{ success: boolean; message: string }>(
+          '/admin/layout',
+          toLayoutPayload(layout),
+          { params: museumId ? { museum_id: museumId } : undefined },
+        )
+        .then((r) => r.data),
+    () => mockApi.saveMuseumLayout(layout, museumId),
+  )
