@@ -15,10 +15,12 @@ api.interceptors.request.use((config) => {
     if (!config.headers) {
       config.headers = new AxiosHeaders()
     }
-    if (config.headers instanceof AxiosHeaders) {
-      config.headers.set('Authorization', `Bearer ${token}`)
+    const headers = config.headers
+    if (headers instanceof AxiosHeaders) {
+      headers.set('Authorization', `Bearer ${token}`)
     } else {
-      ;(config.headers as Record<string, string>).Authorization = `Bearer ${token}`
+      const headerRecord = headers as Record<string, string>
+      headerRecord.Authorization = `Bearer ${token}`
     }
   }
   return config

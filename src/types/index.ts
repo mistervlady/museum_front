@@ -50,6 +50,7 @@ export interface StaffMember {
 export interface StaffInvite {
   token: string
   url?: string
+  /** ISO string derived from API field expires_at */
   expiresAt?: string
 }
 

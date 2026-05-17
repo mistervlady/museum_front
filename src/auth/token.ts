@@ -1,21 +1,11 @@
-const TOKEN_KEY = 'museum_staff_token'
+let cachedToken: string | null = null
 
-const canUseStorage = () => typeof window !== 'undefined' && !!window.localStorage
-
-export const getStoredToken = (): string | null => {
-  if (!canUseStorage()) return null
-  return window.localStorage.getItem(TOKEN_KEY)
-}
+export const getStoredToken = (): string | null => cachedToken
 
 export const setStoredToken = (token: string | null) => {
-  if (!canUseStorage()) return
-  if (token) {
-    window.localStorage.setItem(TOKEN_KEY, token)
-  } else {
-    window.localStorage.removeItem(TOKEN_KEY)
-  }
+  cachedToken = token
 }
 
-export const clearStoredToken = () => setStoredToken(null)
-
-export { TOKEN_KEY }
+export const clearStoredToken = () => {
+  cachedToken = null
+}

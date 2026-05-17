@@ -145,7 +145,9 @@ export default function StaffDashboardPage() {
           animate={{ opacity: 1, y: 0 }}
         >
           <div>
-            <h2 className="section-title">Здравствуйте{user?.name ? `, ${user.name}` : ''}</h2>
+            <h2 className="section-title">
+              {user?.name || user?.email ? `Здравствуйте, ${user?.name ?? user?.email}` : 'Здравствуйте'}
+            </h2>
             <p className="section-subtitle">
               Управляйте музеями, приглашайте сотрудников и переходите в админку.
             </p>
@@ -280,12 +282,19 @@ export default function StaffDashboardPage() {
                     )}
                     {inviteResult && (
                       <div className="text-xs text-museum-300 border border-museum-700 rounded-xl px-3 py-2">
-                        <p>Код: <span className="text-museum-100 font-semibold">{inviteResult.token || '—'}</span></p>
+                        <p>
+                          Код:{' '}
+                          <span className="text-museum-100 font-semibold">{inviteResult.token || '—'}</span>
+                        </p>
                         {inviteResult.url && (
-                          <p className="mt-1 break-all">Ссылка: {inviteResult.url}</p>
+                          <p className="mt-1 break-all">
+                            Ссылка: {inviteResult.url}
+                          </p>
                         )}
                         {inviteResult.expiresAt && (
-                          <p className="mt-1 text-museum-500">Истекает: {inviteResult.expiresAt}</p>
+                          <p className="mt-1 text-museum-500">
+                            Истекает: {inviteResult.expiresAt}
+                          </p>
                         )}
                       </div>
                     )}
