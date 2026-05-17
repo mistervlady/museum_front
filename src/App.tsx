@@ -7,6 +7,9 @@ import PersonalExcursionPage from './pages/PersonalExcursionPage'
 import InfinityExcursionPage from './pages/InfinityExcursionPage'
 import AdminPage from './pages/AdminPage'
 import NotFoundPage from './pages/NotFoundPage'
+import StaffLoginPage from './pages/StaffLoginPage'
+import StaffDashboardPage from './pages/StaffDashboardPage'
+import ProtectedRoute from './auth/ProtectedRoute'
 
 export default function App() {
   return (
@@ -22,6 +25,17 @@ export default function App() {
 
           {/* Admin */}
           <Route path="/admin" element={<AdminPage />} />
+
+          {/* Staff */}
+          <Route path="/staff/login" element={<StaffLoginPage />} />
+          <Route
+            path="/staff"
+            element={
+              <ProtectedRoute>
+                <StaffDashboardPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Fallbacks */}
           <Route path="/excursion" element={<Navigate to="/excursion-type" replace />} />

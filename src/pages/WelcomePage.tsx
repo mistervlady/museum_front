@@ -51,6 +51,10 @@ export default function WelcomePage() {
     navigate(`/excursion-type?museum=${id}`)
   }
 
+  const handleStaffLogin = () => {
+    navigate('/staff/login')
+  }
+
   return (
     <>
       <Header />
@@ -73,6 +77,11 @@ export default function WelcomePage() {
               Это умный музейный гид с персонализированными маршрутами и AI-описаниями экспонатов.
               Выберите музей, чтобы начать.
             </p>
+            <div className="mt-6 flex justify-center">
+              <Button variant="secondary" size="sm" onClick={handleStaffLogin}>
+                Войти как сотрудник
+              </Button>
+            </div>
           </motion.div>
 
           {/* Feature pills */}

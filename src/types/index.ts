@@ -8,6 +8,51 @@ export interface Museum {
   imageUrl?: string
 }
 
+// ─── Auth / Staff ──────────────────────────────────────────────────────────────
+
+export interface StaffUser {
+  id: number
+  email: string
+  name?: string
+  role?: string
+}
+
+export interface AuthSession {
+  token: string
+  user?: StaffUser
+}
+
+export interface LoginPayload {
+  email: string
+  password: string
+}
+
+export interface RegisterPayload {
+  name?: string
+  email: string
+  password: string
+}
+
+export interface StaffMuseum {
+  id: number
+  name: string
+  description?: string
+  role?: string
+}
+
+export interface StaffMember {
+  id: number
+  email?: string
+  name?: string
+  role?: string
+}
+
+export interface StaffInvite {
+  token: string
+  url?: string
+  expiresAt?: string
+}
+
 export interface Exhibit {
   id: number
   museumId?: number

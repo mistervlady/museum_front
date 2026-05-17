@@ -1,5 +1,7 @@
 import api from './client'
 import type {
+  AuthSession,
+  LoginPayload,
   Museum,
   PersonalExcursionSetupParams,
   PersonalExcursionSession,
@@ -9,6 +11,11 @@ import type {
   MuseumLayoutScheme,
   MuseumLayoutPayload,
   ExcursionEventResponse,
+  RegisterPayload,
+  StaffInvite,
+  StaffMember,
+  StaffMuseum,
+  StaffUser,
 } from '@/types'
 
 const AUDIO_FORMAT = 'with_audio'
@@ -19,6 +26,62 @@ const toExhibitDescription = (event: ExcursionEventResponse): ExhibitDescription
   imageUrl: event.exhibit?.image_url,
   exhibitId: event.exhibit_id ?? event.exhibit?.id,
 })
+
+// ─── Auth / Staff ──────────────────────────────────────────────────────────────
+
+interface AuthSessionResponse {
+  token?: string
+  access_token?: string
+  user?: StaffUser
+}
+
+const toAuthSession = (payload: AuthSessionResponse): AuthSession => ({
+  token: payload.token ?? payload.access_token ?? '',
+  user: payload.user,
+})
+
+export const registerStaff = (payload: RegisterPayload) =>
+  api.post<AuthSessionResponse>('/auth/register', payload).then((r) => toAuthSession(r.data))
+
+export const loginStaff = (payload: LoginPayload) =>
+  api.post<AuthSessionResponse>('/auth/login', payload).then((r) => toAuthSession(r.data))
+
+export const getCurrentUser = () => api.get<StaffUser>('/auth/me').then((r) => r.data)
+
+export const getStaffMuseums = () =>
+  api.get<{ items?: StaffMuseum[]; museums?: StaffMuseum[] } | StaffMuseum[]>('/staff/museums').then((r) => {
+    const data = r.data
+    if (Array.isArray(data)) return data
+    return data.items ?? data.museums ?? []
+  })
+
+export const createMuseum = (payload: { name: string; description?: string }) =>
+  api.post<StaffMuseum>('/museums', payload).then((r) => r.data)
+
+interface InviteResponse {
+  token?: string
+  invite_token?: string
+  url?: string
+  invite_url?: string
+  expires_at?: string
+}
+
+export const createMuseumInvite = (museumId: number) =>
+  api.post<InviteResponse>(`/museums/${museumId}/invites`).then((r) => ({
+    token: r.data.token ?? r.data.invite_token ?? '',
+    url: r.data.url ?? r.data.invite_url,
+    expiresAt: r.data.expires_at,
+  }) satisfies StaffInvite)
+
+export const acceptInvite = (token: string) =>
+  api.post('/invites/accept', { token }).then((r) => r.data)
+
+export const getMuseumStaff = (museumId: number) =>
+  api.get<{ items?: StaffMember[]; staff?: StaffMember[] } | StaffMember[]>(`/museums/${museumId}/staff`).then((r) => {
+    const data = r.data
+    if (Array.isArray(data)) return data
+    return data.items ?? data.staff ?? []
+  })
 
 // ─── Museums ─────────────────────────────────────────────────────────────────
 

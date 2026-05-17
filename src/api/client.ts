@@ -1,4 +1,5 @@
-import axios from 'axios'
+import axios, { AxiosHeaders } from 'axios'
+import { clearStoredToken, getStoredToken } from '@/auth/token'
 
 const api = axios.create({
   baseURL: '/api',
@@ -8,10 +9,36 @@ const api = axios.create({
   },
 })
 
+api.interceptors.request.use((config) => {
+  const token = getStoredToken()
+  if (token) {
+    if (!config.headers) {
+      config.headers = new AxiosHeaders()
+    }
+    if (config.headers instanceof AxiosHeaders) {
+      config.headers.set('Authorization', `Bearer ${token}`)
+    } else {
+      ;(config.headers as Record<string, string>).Authorization = `Bearer ${token}`
+    }
+  }
+  return config
+})
+
+const notifyUnauthorized = () => {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent('auth:logout'))
+}
+
 // Intercept errors globally
 api.interceptors.response.use(
   (res) => res,
   (err) => {
+    if (err.response?.status === 401) {
+      if (getStoredToken()) {
+        clearStoredToken()
+        notifyUnauthorized()
+      }
+    }
     if (err.response?.status === 502) {
       return Promise.reject(new Error('Похоже, пока гид не готов'))
     }
