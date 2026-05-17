@@ -1,3 +1,4 @@
+// Token is kept only in memory to avoid clear-text persistence on disk.
 let cachedToken: string | null = null
 
 export const getStoredToken = (): string | null => cachedToken

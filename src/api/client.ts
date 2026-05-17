@@ -12,16 +12,9 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = getStoredToken()
   if (token) {
-    if (!config.headers) {
-      config.headers = new AxiosHeaders()
-    }
-    const headers = config.headers
-    if (headers instanceof AxiosHeaders) {
-      headers.set('Authorization', `Bearer ${token}`)
-    } else {
-      const headerRecord = headers as Record<string, string>
-      headerRecord.Authorization = `Bearer ${token}`
-    }
+    const headers = AxiosHeaders.from(config.headers)
+    headers.set('Authorization', `Bearer ${token}`)
+    config.headers = headers
   }
   return config
 })
