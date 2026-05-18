@@ -10,6 +10,7 @@ import NotFoundPage from './pages/NotFoundPage'
 import StaffLoginPage from './pages/StaffLoginPage'
 import StaffDashboardPage from './pages/StaffDashboardPage'
 import ProtectedRoute from './auth/ProtectedRoute'
+import StaffAdminRoute from './auth/StaffAdminRoute'
 
 export default function App() {
   return (
@@ -23,8 +24,15 @@ export default function App() {
           <Route path="/excursion/personal" element={<PersonalExcursionPage />} />
           <Route path="/excursion/infinity" element={<InfinityExcursionPage />} />
 
-          {/* Admin */}
-          <Route path="/admin" element={<AdminPage />} />
+          {/* Admin - Protected by staff/admin role */}
+          <Route
+            path="/admin"
+            element={
+              <StaffAdminRoute>
+                <AdminPage />
+              </StaffAdminRoute>
+            }
+          />
 
           {/* Staff */}
           <Route path="/staff/login" element={<StaffLoginPage />} />

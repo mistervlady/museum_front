@@ -187,7 +187,7 @@ export default function StaffDashboardPage() {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => setSelectedMuseumId(museum.id)}>
+                      <Button size="sm" variant="secondary" onClick={() => navigate(`/admin?museum=${museum.id}`)}>
                         Управлять
                       </Button>
                     </div>
