@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom'
 import Spinner from '@/components/ui/Spinner'
 import { useAuth } from './AuthProvider'
+import { VALID_STAFF_ROLES } from './constants'
 
 interface StaffAdminRouteProps {
   children: JSX.Element
@@ -8,7 +9,7 @@ interface StaffAdminRouteProps {
 
 /**
  * Route guard that ensures only authenticated staff members can access admin pages.
- * Staff members include users with roles: 'admin', 'editor', 'viewer'
+ * Staff members include users with valid staff roles defined in VALID_STAFF_ROLES.
  */
 export default function StaffAdminRoute({ children }: StaffAdminRouteProps) {
   const { loading, isAuthenticated, user } = useAuth()
@@ -26,9 +27,8 @@ export default function StaffAdminRoute({ children }: StaffAdminRouteProps) {
   }
 
   // Check if user has a valid staff role
-  const validRoles = ['admin', 'editor', 'viewer']
   const userRole = user?.role?.toLowerCase()
-  const hasValidRole = userRole && validRoles.includes(userRole)
+  const hasValidRole = userRole && VALID_STAFF_ROLES.includes(userRole as any)
 
   if (!hasValidRole) {
     return (
