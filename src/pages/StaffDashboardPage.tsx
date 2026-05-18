@@ -1,22 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Copy, Check } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
 import {
-  acceptInvite,
   createMuseum,
-  createMuseumInvite,
-  getMuseumStaff,
   getStaffMuseums,
 } from '@/api/endpoints'
-import type { StaffInvite, StaffMember, StaffMuseum } from '@/types'
+import type { StaffMuseum } from '@/types'
 import { useAuth } from '@/auth/AuthProvider'
-import { STAFF_ROLES, ROLE_DISPLAY_NAMES } from '@/auth/constants'
+import { STAFF_ROLES } from '@/auth/constants'
 
 export default function StaffDashboardPage() {
   const navigate = useNavigate()
@@ -26,25 +22,11 @@ export default function StaffDashboardPage() {
   const [museums, setMuseums] = useState<StaffMuseum[]>([])
   const [museumsLoading, setMuseumsLoading] = useState(true)
   const [museumsError, setMuseumsError] = useState<string | null>(null)
-  const [selectedMuseumId, setSelectedMuseumId] = useState<number | null>(null)
-
-  const [staff, setStaff] = useState<StaffMember[]>([])
-  const [staffLoading, setStaffLoading] = useState(false)
-  const [staffError, setStaffError] = useState<string | null>(null)
 
   const [museumName, setMuseumName] = useState('')
   const [museumDescription, setMuseumDescription] = useState('')
   const [createLoading, setCreateLoading] = useState(false)
   const [createMessage, setCreateMessage] = useState<string | null>(null)
-
-  const [inviteToken, setInviteToken] = useState('')
-  const [inviteLoading, setInviteLoading] = useState(false)
-  const [inviteResult, setInviteResult] = useState<StaffInvite | null>(null)
-  const [inviteMessage, setInviteMessage] = useState<string | null>(null)
-  const [copiedLink, setCopiedLink] = useState(false)
-
-  const [acceptLoading, setAcceptLoading] = useState(false)
-  const [acceptMessage, setAcceptMessage] = useState<string | null>(null)
 
   const loadMuseums = useCallback(async () => {
     setMuseumsLoading(true)
@@ -52,10 +34,6 @@ export default function StaffDashboardPage() {
     try {
       const items = await getStaffMuseums()
       setMuseums(items)
-      setSelectedMuseumId((current) => {
-        if (current && items.some((museum) => museum.id === current)) return current
-        return items[0]?.id ?? null
-      })
     } catch (e) {
       setMuseumsError((e as Error).message)
     } finally {
@@ -67,24 +45,6 @@ export default function StaffDashboardPage() {
     loadMuseums()
   }, [loadMuseums])
 
-  const selectedMuseum = useMemo(
-    () => museums.find((museum) => museum.id === selectedMuseumId) ?? null,
-    [museums, selectedMuseumId],
-  )
-
-  useEffect(() => {
-    if (!selectedMuseumId) {
-      setStaff([])
-      return
-    }
-    setStaffLoading(true)
-    setStaffError(null)
-    getMuseumStaff(selectedMuseumId)
-      .then(setStaff)
-      .catch((e) => setStaffError((e as Error).message))
-      .finally(() => setStaffLoading(false))
-  }, [selectedMuseumId])
-
   const handleCreateMuseum = async () => {
     if (!museumName.trim()) return
     setCreateLoading(true)
@@ -94,7 +54,6 @@ export default function StaffDashboardPage() {
       setMuseums((prev) => [created, ...prev])
       setMuseumName('')
       setMuseumDescription('')
-      setSelectedMuseumId(created.id)
       setCreateMessage('Музей создан и добавлен в список.')
     } catch (e) {
       setCreateMessage((e as Error).message)
@@ -103,55 +62,11 @@ export default function StaffDashboardPage() {
     }
   }
 
-  const handleCreateInvite = async () => {
-    if (!selectedMuseumId) return
-    setInviteLoading(true)
-    setInviteMessage(null)
-    try {
-      const invite = await createMuseumInvite(selectedMuseumId)
-      setInviteResult(invite)
-      setInviteMessage('Приглашение создано.')
-      setCopiedLink(false)
-    } catch (e) {
-      setInviteMessage((e as Error).message)
-    } finally {
-      setInviteLoading(false)
-    }
-  }
-
-  const handleCopyLink = () => {
-    if (inviteResult?.url) {
-      navigator.clipboard.writeText(inviteResult.url)
-      setCopiedLink(true)
-      setTimeout(() => setCopiedLink(false), 2000)
-    }
-  }
-
-  const handleAcceptInvite = async () => {
-    if (!inviteToken.trim()) return
-    setAcceptLoading(true)
-    setAcceptMessage(null)
-    try {
-      await acceptInvite(inviteToken.trim())
-      setAcceptMessage('Приглашение принято. Музей появился в списке.')
-      setInviteToken('')
-      await loadMuseums()
-    } catch (e) {
-      setAcceptMessage((e as Error).message)
-    } finally {
-      setAcceptLoading(false)
-    }
-  }
-
-  const handleGoToAdmin = (museumId?: number) => {
-    const id = museumId ?? selectedMuseumId
-    if (id) {
-      navigate(`/admin?museum=${id}`)
-    }
+  const handleGoToAdmin = (museumId: number) => {
+    navigate(`/admin?museum=${museumId}`)
   }
 
   const isSuperAdmin = userRole === STAFF_ROLES.SUPERADMIN
-  const isOwner = userRole === STAFF_ROLES.OWNER
 
   return (
     <>
@@ -166,9 +81,6 @@ export default function StaffDashboardPage() {
             <h2 className="section-title">
               {displayName ? `Здравствуйте, ${displayName}` : 'Здравствуйте'}
             </h2>
-            <p className="section-subtitle">
-              Роль: {ROLE_DISPLAY_NAMES[userRole as keyof typeof ROLE_DISPLAY_NAMES] || userRole}
-            </p>
           </div>
 
           <div className="divider" />
@@ -185,25 +97,18 @@ export default function StaffDashboardPage() {
               </Card>
             ) : museums.length === 0 ? (
               <Card className="text-sm text-museum-400">
-                Пока у вас нет музеев. Создайте новый или примите приглашение.
+                Пока у вас нет музеев. Создайте новый музей или обратитесь к администратору.
               </Card>
             ) : (
               <div className="grid gap-3">
                 {museums.map((museum) => (
                   <Card
                     key={museum.id}
-                    className={`flex items-center justify-between gap-4 ${
-                      selectedMuseumId === museum.id ? 'border-gold/60' : ''
-                    }`}
+                    className="flex items-center justify-between gap-4"
                   >
                     <div>
                       <p className="text-museum-100 font-semibold">{museum.name}</p>
                       <p className="text-xs text-museum-500">{museum.description ?? 'Описание не указано'}</p>
-                      {museum.role && (
-                        <span className="badge badge-gold mt-2">
-                          {ROLE_DISPLAY_NAMES[museum.role as keyof typeof ROLE_DISPLAY_NAMES] || museum.role}
-                        </span>
-                      )}
                     </div>
                     <div className="flex gap-2">
                       <Button size="sm" variant="secondary" onClick={() => handleGoToAdmin(museum.id)}>
@@ -247,139 +152,6 @@ export default function StaffDashboardPage() {
                 </div>
               </Card>
             )}
-
-            <Card>
-              <h3 className="section-title">Принять приглашение</h3>
-              <p className="section-subtitle mb-3">
-                Введите код, который прислал владелец музея, чтобы получить доступ.
-              </p>
-              <div className="flex flex-col gap-3">
-                <input
-                  className="input"
-                  placeholder="Код приглашения"
-                  value={inviteToken}
-                  onChange={(e) => setInviteToken(e.target.value)}
-                />
-                {acceptMessage && (
-                  <div className="text-xs text-museum-400 border border-museum-700 rounded-xl px-3 py-2">
-                    {acceptMessage}
-                  </div>
-                )}
-                <Button loading={acceptLoading} onClick={handleAcceptInvite} disabled={!inviteToken.trim()}>
-                  Принять приглашение
-                </Button>
-              </div>
-            </Card>
-          </div>
-
-          <div className="divider" />
-
-          <div className="grid gap-4">
-            <Card>
-              <h3 className="section-title">Управление музеем</h3>
-              {!selectedMuseum ? (
-                <p className="section-subtitle">Выберите музей, чтобы увидеть сотрудников и приглашения.</p>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between gap-3 mb-4">
-                    <div>
-                      <p className="text-museum-100 font-semibold">{selectedMuseum.name}</p>
-                      <p className="text-xs text-museum-500">
-                        {selectedMuseum.description ?? 'Описание не указано'}
-                      </p>
-                    </div>
-                    <Button size="sm" variant="secondary" onClick={() => handleGoToAdmin()}>
-                      Перейти в админку
-                    </Button>
-                  </div>
-
-                  {isOwner && (
-                    <div className="flex flex-col gap-3">
-                      <Button loading={inviteLoading} onClick={handleCreateInvite} disabled={!selectedMuseumId}>
-                        Сгенерировать приглашение
-                      </Button>
-                      {inviteMessage && (
-                        <div className="text-xs text-museum-400 border border-museum-700 rounded-xl px-3 py-2">
-                          {inviteMessage}
-                        </div>
-                      )}
-                      {inviteResult && (
-                        <div className="text-xs text-museum-300 border border-museum-700 rounded-xl px-3 py-2">
-                          {inviteResult.url && (
-                            <div className="mb-3 pb-3 border-b border-museum-600">
-                              <p className="mb-2 text-museum-400">Ссылка для приглашения:</p>
-                              <div className="flex gap-2 items-center">
-                                <code className="bg-museum-900 px-2 py-1 rounded text-museum-200 flex-1 break-all text-xs">
-                                  {inviteResult.url}
-                                </code>
-                                <button
-                                  onClick={handleCopyLink}
-                                  className="flex items-center gap-1 px-2 py-1 bg-gold/20 text-gold rounded hover:bg-gold/30 transition-colors"
-                                  title="Скопировать ссылку"
-                                >
-                                  {copiedLink ? (
-                                    <>
-                                      <Check className="w-4 h-4" />
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Copy className="w-4 h-4" />
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                          {inviteResult.token && (
-                            <div>
-                              <p className="text-museum-400 mb-1">Код приглашения (запасной вариант):</p>
-                              <p className="text-museum-100 font-semibold">{inviteResult.token}</p>
-                            </div>
-                          )}
-                          {inviteResult.expiresAt && (
-                            <p className="mt-2 text-museum-500 text-xs">
-                              Истекает: {inviteResult.expiresAt}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-            </Card>
-
-            <Card>
-              <h3 className="section-title">Сотрудники музея</h3>
-              {!selectedMuseum ? (
-                <p className="section-subtitle">Выберите музей, чтобы увидеть список сотрудников.</p>
-              ) : staffLoading ? (
-                <div className="flex justify-center py-4">
-                  <Spinner />
-                </div>
-              ) : staffError ? (
-                <div className="text-xs text-red-400 border border-red-700/40 bg-red-950/40 rounded-xl px-3 py-2">
-                  {staffError}
-                </div>
-              ) : staff.length === 0 ? (
-                <p className="section-subtitle">Пока нет добавленных сотрудников.</p>
-              ) : (
-                <ul className="flex flex-col gap-2">
-                  {staff.map((member) => (
-                    <li key={member.id} className="flex items-center justify-between text-sm border-b border-museum-800 pb-2">
-                      <span className="text-museum-100">
-                        {member.name ?? member.email ?? `ID ${member.id}`}
-                      </span>
-                      {member.role && (
-                        <span className="badge badge-gold">
-                          {ROLE_DISPLAY_NAMES[member.role as keyof typeof ROLE_DISPLAY_NAMES] || member.role}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
           </div>
         </motion.div>
       </PageLayout>
