@@ -73,16 +73,29 @@ const mockExhibits: Exhibit[] = [
   },
 ]
 
-let museumIdCounter = 3
+let mockMuseumIdCounter = 3
+let mockUserIdCounter = 4
 
-let currentUser: StaffUser = {
+let mockCurrentUser: StaffUser = {
   id: 1,
   email: 'demo@museum.ru',
   name: 'Демо-сотрудник',
   role: 'admin',
 }
 
-let currentToken = 'mock-token'
+let mockCurrentToken = 'mock-token'
+
+const mockRegisteredUsers = new Map<string, StaffUser>([
+  [
+    'demo@museum.ru',
+    {
+      id: 1,
+      email: 'demo@museum.ru',
+      name: 'Демо-сотрудник',
+      role: 'admin',
+    },
+  ],
+])
 
 const staffMuseums: StaffMuseum[] = [
   {
@@ -211,34 +224,42 @@ export const mockApi = {
   getMuseums: async () => withDelay([...mockMuseums]),
 
   registerStaff: async (payload: RegisterPayload): Promise<AuthSession> => {
-    currentUser = {
-      id: currentUser.id + 1,
+    const newUser: StaffUser = {
+      id: ++mockUserIdCounter,
       email: payload.email,
       name: payload.name ?? 'Новый сотрудник',
       role: 'editor',
     }
-    currentToken = nextId('mock-token')
-    return withDelay({ token: currentToken, user: currentUser })
+    mockRegisteredUsers.set(payload.email, newUser)
+    mockCurrentUser = newUser
+    mockCurrentToken = nextId('mock-token')
+    return withDelay({ token: mockCurrentToken, user: mockCurrentUser })
   },
 
   loginStaff: async (payload: LoginPayload): Promise<AuthSession> => {
-    currentUser = {
-      id: currentUser.id,
-      email: payload.email,
-      name: currentUser.name ?? 'Сотрудник',
-      role: currentUser.role ?? 'editor',
+    const user = mockRegisteredUsers.get(payload.email)
+    if (user) {
+      mockCurrentUser = user
+    } else {
+      mockCurrentUser = {
+        id: ++mockUserIdCounter,
+        email: payload.email,
+        name: 'Сотрудник',
+        role: 'editor',
+      }
+      mockRegisteredUsers.set(payload.email, mockCurrentUser)
     }
-    currentToken = nextId('mock-token')
-    return withDelay({ token: currentToken, user: currentUser })
+    mockCurrentToken = nextId('mock-token')
+    return withDelay({ token: mockCurrentToken, user: mockCurrentUser })
   },
 
-  getCurrentUser: async (): Promise<StaffUser> => withDelay(currentUser),
+  getCurrentUser: async (): Promise<StaffUser> => withDelay(mockCurrentUser),
 
   getStaffMuseums: async (): Promise<StaffMuseum[]> => withDelay([...staffMuseums]),
 
   createMuseum: async (payload: { name: string; description?: string }): Promise<StaffMuseum> => {
     const museum: StaffMuseum = {
-      id: museumIdCounter++,
+      id: ++mockMuseumIdCounter,
       name: payload.name,
       description: payload.description,
       role: 'Владелец',
