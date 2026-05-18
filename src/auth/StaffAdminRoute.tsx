@@ -1,10 +1,18 @@
 import { Navigate } from 'react-router-dom'
 import Spinner from '@/components/ui/Spinner'
 import { useAuth } from './AuthProvider'
-import { VALID_STAFF_ROLES } from './constants'
+import { VALID_STAFF_ROLES, type ValidStaffRole } from './constants'
 
 interface StaffAdminRouteProps {
   children: JSX.Element
+}
+
+/**
+ * Type guard to check if a value is a valid staff role
+ */
+function isValidStaffRole(role: string | undefined): role is ValidStaffRole {
+  if (!role) return false
+  return VALID_STAFF_ROLES.includes(role.toLowerCase() as ValidStaffRole)
 }
 
 /**
@@ -27,10 +35,7 @@ export default function StaffAdminRoute({ children }: StaffAdminRouteProps) {
   }
 
   // Check if user has a valid staff role
-  const userRole = user?.role?.toLowerCase()
-  const hasValidRole = userRole && VALID_STAFF_ROLES.includes(userRole as any)
-
-  if (!hasValidRole) {
+  if (!isValidStaffRole(user?.role)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-museum-950">
         <div className="text-center text-museum-300 px-4">
