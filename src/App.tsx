@@ -9,6 +9,7 @@ import AdminPage from './pages/AdminPage'
 import NotFoundPage from './pages/NotFoundPage'
 import StaffLoginPage from './pages/StaffLoginPage'
 import StaffDashboardPage from './pages/StaffDashboardPage'
+import InvitePage from './pages/InvitePage'
 import ProtectedRoute from './auth/ProtectedRoute'
 import StaffAdminRoute from './auth/StaffAdminRoute'
 
@@ -36,6 +37,7 @@ export default function App() {
 
           {/* Staff */}
           <Route path="/staff/login" element={<StaffLoginPage />} />
+          <Route path="/invite/:code" element={<InvitePage />} />
           <Route
             path="/staff"
             element={

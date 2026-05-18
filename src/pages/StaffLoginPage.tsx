@@ -7,13 +7,9 @@ import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import { useAuth } from '@/auth/AuthProvider'
 
-type Mode = 'login' | 'register'
-
 export default function StaffLoginPage() {
   const navigate = useNavigate()
-  const { login, register, isAuthenticated } = useAuth()
-  const [mode, setMode] = useState<Mode>('login')
-  const [name, setName] = useState('')
+  const { login, isAuthenticated } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -30,11 +26,7 @@ export default function StaffLoginPage() {
     setLoading(true)
     setError(null)
     try {
-      if (mode === 'login') {
-        await login({ email, password })
-      } else {
-        await register({ name: name || undefined, email, password })
-      }
+      await login({ email, password })
       navigate('/staff')
     } catch (e) {
       setError((e as Error).message)
@@ -53,41 +45,9 @@ export default function StaffLoginPage() {
           animate={{ opacity: 1, y: 0 }}
         >
           <Card>
-            <div className="flex items-center gap-2 mb-6">
-              <button
-                onClick={() => setMode('login')}
-                className={`px-3 py-2 rounded-full text-xs ${
-                  mode === 'login'
-                    ? 'bg-gold/20 text-gold border border-gold/40'
-                    : 'border border-museum-700 text-museum-400'
-                }`}
-              >
-                Войти
-              </button>
-              <button
-                onClick={() => setMode('register')}
-                className={`px-3 py-2 rounded-full text-xs ${
-                  mode === 'register'
-                    ? 'bg-gold/20 text-gold border border-gold/40'
-                    : 'border border-museum-700 text-museum-400'
-                }`}
-              >
-                Регистрация
-              </button>
-            </div>
+            <h2 className="text-xl font-semibold text-museum-100 mb-6">Вход</h2>
 
             <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-              {mode === 'register' && (
-                <div>
-                  <label className="text-xs text-museum-400">Имя</label>
-                  <input
-                    className="input mt-1"
-                    placeholder="Мария"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </div>
-              )}
               <div>
                 <label className="text-xs text-museum-400">Email</label>
                 <input
@@ -116,9 +76,13 @@ export default function StaffLoginPage() {
                 </div>
               )}
               <Button type="submit" loading={loading} fullWidth>
-                {mode === 'login' ? 'Войти' : 'Создать аккаунт'}
+                Войти
               </Button>
             </form>
+
+            <p className="text-xs text-museum-400 mt-6">
+              Нет аккаунта? Получите приглашение от владельца музея.
+            </p>
           </Card>
         </motion.div>
       </PageLayout>

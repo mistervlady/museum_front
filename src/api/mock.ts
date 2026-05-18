@@ -80,7 +80,7 @@ let mockCurrentUser: StaffUser = {
   id: 1,
   email: 'demo@museum.ru',
   name: 'Демо-сотрудник',
-  role: 'admin',
+  role: 'superadmin',
 }
 
 let mockCurrentToken = 'mock-token'
@@ -92,7 +92,7 @@ const mockRegisteredUsers = new Map<string, StaffUser>([
       id: 1,
       email: 'demo@museum.ru',
       name: 'Демо-сотрудник',
-      role: 'admin',
+      role: 'superadmin',
     },
   ],
 ])
@@ -102,13 +102,13 @@ const staffMuseums: StaffMuseum[] = [
     id: 1,
     name: 'Красноярский художественный музей',
     description: 'Галерея живописи и графики',
-    role: 'Владелец',
+    role: 'owner',
   },
   {
     id: 2,
     name: 'Музей науки и технологий',
     description: 'Экспериментальная площадка',
-    role: 'Редактор',
+    role: 'editor',
   },
 ]
 
@@ -116,7 +116,7 @@ const staffMembersByMuseum = new Map<number, StaffMember[]>([
   [
     1,
     [
-      { id: 1, name: 'Демо-сотрудник', email: 'demo@museum.ru', role: 'admin' },
+      { id: 1, name: 'Демо-сотрудник', email: 'demo@museum.ru', role: 'superadmin' },
       { id: 2, name: 'Марина', email: 'marina@museum.ru', role: 'editor' },
     ],
   ],

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { Copy, Check } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
@@ -15,11 +16,13 @@ import {
 } from '@/api/endpoints'
 import type { StaffInvite, StaffMember, StaffMuseum } from '@/types'
 import { useAuth } from '@/auth/AuthProvider'
+import { STAFF_ROLES, ROLE_DISPLAY_NAMES } from '@/auth/constants'
 
 export default function StaffDashboardPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const displayName = user?.name ?? user?.email
+  const userRole = user?.role ?? ''
   const [museums, setMuseums] = useState<StaffMuseum[]>([])
   const [museumsLoading, setMuseumsLoading] = useState(true)
   const [museumsError, setMuseumsError] = useState<string | null>(null)
@@ -38,6 +41,7 @@ export default function StaffDashboardPage() {
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteResult, setInviteResult] = useState<StaffInvite | null>(null)
   const [inviteMessage, setInviteMessage] = useState<string | null>(null)
+  const [copiedLink, setCopiedLink] = useState(false)
 
   const [acceptLoading, setAcceptLoading] = useState(false)
   const [acceptMessage, setAcceptMessage] = useState<string | null>(null)
@@ -106,11 +110,20 @@ export default function StaffDashboardPage() {
     try {
       const invite = await createMuseumInvite(selectedMuseumId)
       setInviteResult(invite)
-      setInviteMessage('Приглашение создано. Передайте код сотруднику.')
+      setInviteMessage('Приглашение создано.')
+      setCopiedLink(false)
     } catch (e) {
       setInviteMessage((e as Error).message)
     } finally {
       setInviteLoading(false)
+    }
+  }
+
+  const handleCopyLink = () => {
+    if (inviteResult?.url) {
+      navigator.clipboard.writeText(inviteResult.url)
+      setCopiedLink(true)
+      setTimeout(() => setCopiedLink(false), 2000)
     }
   }
 
@@ -137,6 +150,9 @@ export default function StaffDashboardPage() {
     }
   }
 
+  const isSuperAdmin = userRole === STAFF_ROLES.SUPERADMIN
+  const isOwner = userRole === STAFF_ROLES.OWNER
+
   return (
     <>
       <Header title="Кабинет сотрудника" showBack backTo="/" />
@@ -151,7 +167,7 @@ export default function StaffDashboardPage() {
               {displayName ? `Здравствуйте, ${displayName}` : 'Здравствуйте'}
             </h2>
             <p className="section-subtitle">
-              Управляйте музеями, приглашайте сотрудников и переходите в админку.
+              Роль: {ROLE_DISPLAY_NAMES[userRole as keyof typeof ROLE_DISPLAY_NAMES] || userRole}
             </p>
           </div>
 
@@ -184,7 +200,9 @@ export default function StaffDashboardPage() {
                       <p className="text-museum-100 font-semibold">{museum.name}</p>
                       <p className="text-xs text-museum-500">{museum.description ?? 'Описание не указано'}</p>
                       {museum.role && (
-                        <span className="badge badge-gold mt-2">{museum.role}</span>
+                        <span className="badge badge-gold mt-2">
+                          {ROLE_DISPLAY_NAMES[museum.role as keyof typeof ROLE_DISPLAY_NAMES] || museum.role}
+                        </span>
                       )}
                     </div>
                     <div className="flex gap-2">
@@ -201,32 +219,34 @@ export default function StaffDashboardPage() {
           <div className="divider" />
 
           <div className="grid gap-4">
-            <Card>
-              <h3 className="section-title">Создать музей</h3>
-              <div className="flex flex-col gap-3">
-                <input
-                  className="input"
-                  placeholder="Название музея"
-                  value={museumName}
-                  onChange={(e) => setMuseumName(e.target.value)}
-                />
-                <textarea
-                  className="textarea"
-                  rows={3}
-                  placeholder="Короткое описание (необязательно)"
-                  value={museumDescription}
-                  onChange={(e) => setMuseumDescription(e.target.value)}
-                />
-                {createMessage && (
-                  <div className="text-xs text-museum-400 border border-museum-700 rounded-xl px-3 py-2">
-                    {createMessage}
-                  </div>
-                )}
-                <Button loading={createLoading} onClick={handleCreateMuseum} disabled={!museumName.trim()}>
-                  Создать музей
-                </Button>
-              </div>
-            </Card>
+            {isSuperAdmin && (
+              <Card>
+                <h3 className="section-title">Создать музей</h3>
+                <div className="flex flex-col gap-3">
+                  <input
+                    className="input"
+                    placeholder="Название музея"
+                    value={museumName}
+                    onChange={(e) => setMuseumName(e.target.value)}
+                  />
+                  <textarea
+                    className="textarea"
+                    rows={3}
+                    placeholder="Короткое описание (необязательно)"
+                    value={museumDescription}
+                    onChange={(e) => setMuseumDescription(e.target.value)}
+                  />
+                  {createMessage && (
+                    <div className="text-xs text-museum-400 border border-museum-700 rounded-xl px-3 py-2">
+                      {createMessage}
+                    </div>
+                  )}
+                  <Button loading={createLoading} onClick={handleCreateMuseum} disabled={!museumName.trim()}>
+                    Создать музей
+                  </Button>
+                </div>
+              </Card>
+            )}
 
             <Card>
               <h3 className="section-title">Принять приглашение</h3>
@@ -273,34 +293,58 @@ export default function StaffDashboardPage() {
                     </Button>
                   </div>
 
-                  <div className="flex flex-col gap-3">
-                    <Button loading={inviteLoading} onClick={handleCreateInvite} disabled={!selectedMuseumId}>
-                      Сгенерировать приглашение
-                    </Button>
-                    {inviteMessage && (
-                      <div className="text-xs text-museum-400 border border-museum-700 rounded-xl px-3 py-2">
-                        {inviteMessage}
-                      </div>
-                    )}
-                    {inviteResult && (
-                      <div className="text-xs text-museum-300 border border-museum-700 rounded-xl px-3 py-2">
-                        <p>
-                          Код:{' '}
-                          <span className="text-museum-100 font-semibold">{inviteResult.token || '—'}</span>
-                        </p>
-                        {inviteResult.url && (
-                          <p className="mt-1 break-all">
-                            Ссылка: {inviteResult.url}
-                          </p>
-                        )}
-                        {inviteResult.expiresAt && (
-                          <p className="mt-1 text-museum-500">
-                            Истекает: {inviteResult.expiresAt}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  {isOwner && (
+                    <div className="flex flex-col gap-3">
+                      <Button loading={inviteLoading} onClick={handleCreateInvite} disabled={!selectedMuseumId}>
+                        Сгенерировать приглашение
+                      </Button>
+                      {inviteMessage && (
+                        <div className="text-xs text-museum-400 border border-museum-700 rounded-xl px-3 py-2">
+                          {inviteMessage}
+                        </div>
+                      )}
+                      {inviteResult && (
+                        <div className="text-xs text-museum-300 border border-museum-700 rounded-xl px-3 py-2">
+                          {inviteResult.url && (
+                            <div className="mb-3 pb-3 border-b border-museum-600">
+                              <p className="mb-2 text-museum-400">Ссылка для приглашения:</p>
+                              <div className="flex gap-2 items-center">
+                                <code className="bg-museum-900 px-2 py-1 rounded text-museum-200 flex-1 break-all text-xs">
+                                  {inviteResult.url}
+                                </code>
+                                <button
+                                  onClick={handleCopyLink}
+                                  className="flex items-center gap-1 px-2 py-1 bg-gold/20 text-gold rounded hover:bg-gold/30 transition-colors"
+                                  title="Скопировать ссылку"
+                                >
+                                  {copiedLink ? (
+                                    <>
+                                      <Check className="w-4 h-4" />
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-4 h-4" />
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          {inviteResult.token && (
+                            <div>
+                              <p className="text-museum-400 mb-1">Код приглашения (запасной вариант):</p>
+                              <p className="text-museum-100 font-semibold">{inviteResult.token}</p>
+                            </div>
+                          )}
+                          {inviteResult.expiresAt && (
+                            <p className="mt-2 text-museum-500 text-xs">
+                              Истекает: {inviteResult.expiresAt}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
             </Card>
@@ -326,7 +370,11 @@ export default function StaffDashboardPage() {
                       <span className="text-museum-100">
                         {member.name ?? member.email ?? `ID ${member.id}`}
                       </span>
-                      {member.role && <span className="badge badge-gold">{member.role}</span>}
+                      {member.role && (
+                        <span className="badge badge-gold">
+                          {ROLE_DISPLAY_NAMES[member.role as keyof typeof ROLE_DISPLAY_NAMES] || member.role}
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>
