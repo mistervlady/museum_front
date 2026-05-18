@@ -136,6 +136,10 @@ export default function StaffDashboardPage() {
     }
   }
 
+  const navigateToAdmin = (museumId: number) => {
+    navigate(`/admin?museum=${museumId}`)
+  }
+
   return (
     <>
       <Header title="Кабинет сотрудника" showBack backTo="/" />
@@ -187,7 +191,7 @@ export default function StaffDashboardPage() {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => navigate(`/admin?museum=${museum.id}`)}>
+                      <Button size="sm" variant="secondary" onClick={() => navigateToAdmin(museum.id)}>
                         Управлять
                       </Button>
                     </div>

@@ -27,7 +27,8 @@ export default function StaffAdminRoute({ children }: StaffAdminRouteProps) {
 
   // Check if user has a valid staff role
   const validRoles = ['admin', 'editor', 'viewer']
-  const hasValidRole = user?.role && validRoles.includes(user.role.toLowerCase())
+  const userRole = user?.role?.toLowerCase()
+  const hasValidRole = userRole && validRoles.includes(userRole)
 
   if (!hasValidRole) {
     return (
