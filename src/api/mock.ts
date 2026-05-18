@@ -170,7 +170,9 @@ const withDelay = async <T>(value: T, ms?: number) => {
   return value
 }
 
-const nextId = (prefix: string) => `${prefix}_${Date.now()}_${Math.round(Math.random() * 1000)}`
+let idCounter = 0
+
+const nextId = (prefix: string) => `${prefix}_${Date.now()}_${++idCounter}`
 
 const buildExhibitDescription = (exhibit: Exhibit, index: number): ExhibitDescription => ({
   exhibitId: exhibit.id,
