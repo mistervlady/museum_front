@@ -36,7 +36,6 @@ export default function StaffAdminRoute({ children }: StaffAdminRouteProps) {
         <div className="text-center text-museum-300 px-4">
           <h1 className="text-2xl font-bold mb-2 text-red-400">Доступ запрещён</h1>
           <p>Администрирование доступно только сотрудникам музея.</p>
-          <p className="text-sm text-museum-500 mt-2">Ваша роль: {user?.role || 'не определена'}</p>
         </div>
       </div>
     )

@@ -130,14 +130,11 @@ export default function StaffDashboardPage() {
     }
   }
 
-  const handleGoToAdmin = () => {
-    if (selectedMuseumId) {
-      navigate(`/admin?museum=${selectedMuseumId}`)
+  const handleGoToAdmin = (museumId?: number) => {
+    const id = museumId ?? selectedMuseumId
+    if (id) {
+      navigate(`/admin?museum=${id}`)
     }
-  }
-
-  const navigateToAdmin = (museumId: number) => {
-    navigate(`/admin?museum=${museumId}`)
   }
 
   return (
@@ -191,7 +188,7 @@ export default function StaffDashboardPage() {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => navigateToAdmin(museum.id)}>
+                      <Button size="sm" variant="secondary" onClick={() => handleGoToAdmin(museum.id)}>
                         Управлять
                       </Button>
                     </div>
@@ -271,7 +268,7 @@ export default function StaffDashboardPage() {
                         {selectedMuseum.description ?? 'Описание не указано'}
                       </p>
                     </div>
-                    <Button size="sm" variant="secondary" onClick={handleGoToAdmin}>
+                    <Button size="sm" variant="secondary" onClick={() => handleGoToAdmin()}>
                       Перейти в админку
                     </Button>
                   </div>
