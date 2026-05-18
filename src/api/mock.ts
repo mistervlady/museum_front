@@ -170,9 +170,9 @@ const withDelay = async <T>(value: T, ms?: number) => {
   return value
 }
 
-let idCounter = 0
+let mockSessionIdCounter = 0
 
-const nextId = (prefix: string) => `${prefix}_${Date.now()}_${++idCounter}`
+const nextId = (prefix: string) => `${prefix}_${++mockSessionIdCounter}`
 
 const buildExhibitDescription = (exhibit: Exhibit, index: number): ExhibitDescription => ({
   exhibitId: exhibit.id,
