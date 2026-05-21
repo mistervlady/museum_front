@@ -239,7 +239,7 @@ export default function MuseumDetailPage() {
                   <input
                     className="input"
                     type="email"
-                    placeholder="email сотрудника"
+                    placeholder="Email сотрудника"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
