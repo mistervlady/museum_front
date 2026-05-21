@@ -71,7 +71,7 @@ export default function AdminPage() {
   const museumParam = params.get('museum')
   const museumValue = Number(museumParam)
   const museumId = Number.isFinite(museumValue) ? museumValue : undefined
-  const backTo = museumId ? `/excursion-type?museum=${museumId}` : '/'
+  const backTo = museumId ? `/staff` : '/'
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<UploadResult | null>(null)

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Settings, Map, Moon, Sun } from 'lucide-react'
 import clsx from 'clsx'
+import { useAuth } from '@/auth/AuthProvider'
 
 interface HeaderProps {
   title?: string
@@ -20,6 +21,7 @@ export default function Header({
 }: HeaderProps) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { isAuthenticated, logout } = useAuth()
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window === 'undefined') return 'light'
     const stored = window.localStorage.getItem('theme')
@@ -36,6 +38,13 @@ export default function Header({
   const handleBack = () => {
     if (backTo) navigate(backTo)
     else navigate(-1)
+  }
+
+  const handleLogout = () => {
+    logout()
+    if (location.pathname.startsWith('/staff')) {
+      navigate('/')
+    }
   }
 
   return (
@@ -72,7 +81,7 @@ export default function Header({
         </div>
 
         {/* Right */}
-        <div className="w-24 flex justify-end gap-2">
+        <div className="flex items-center justify-end gap-2">
           <button
             onClick={() => setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))}
             className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-museum-800 text-museum-400 hover:text-museum-100 transition-colors"
@@ -80,6 +89,32 @@ export default function Header({
           >
             {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
           </button>
+
+          {isAuthenticated ? (
+            <>
+              {location.pathname !== '/staff' && (
+                <button
+                  onClick={() => navigate('/staff')}
+                  className="px-3 py-2 text-xs rounded-full border border-museum-600 text-museum-200 hover:border-gold hover:text-gold transition-colors"
+                >
+                  Кабинет
+                </button>
+              )}
+              <button
+                onClick={handleLogout}
+                className="px-3 py-2 text-xs rounded-full border border-museum-600 text-museum-200 hover:border-gold hover:text-gold transition-colors"
+              >
+                Выйти
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => navigate('/staff/login')}
+              className="px-3 py-2 text-xs rounded-full border border-museum-600 text-museum-200 hover:border-gold hover:text-gold transition-colors"
+            >
+              Войти
+            </button>
+          )}
 
           {showAdmin && location.pathname !== '/admin' && (
             <button

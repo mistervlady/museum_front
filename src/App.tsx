@@ -7,6 +7,12 @@ import PersonalExcursionPage from './pages/PersonalExcursionPage'
 import InfinityExcursionPage from './pages/InfinityExcursionPage'
 import AdminPage from './pages/AdminPage'
 import NotFoundPage from './pages/NotFoundPage'
+import StaffLoginPage from './pages/StaffLoginPage'
+import StaffDashboardPage from './pages/StaffDashboardPage'
+import MuseumDetailPage from './pages/MuseumDetailPage'
+import InvitePage from './pages/InvitePage'
+import ProtectedRoute from './auth/ProtectedRoute'
+import StaffAdminRoute from './auth/StaffAdminRoute'
 
 export default function App() {
   return (
@@ -20,8 +26,43 @@ export default function App() {
           <Route path="/excursion/personal" element={<PersonalExcursionPage />} />
           <Route path="/excursion/infinity" element={<InfinityExcursionPage />} />
 
-          {/* Admin */}
-          <Route path="/admin" element={<AdminPage />} />
+          {/* Admin - Protected by staff/admin role */}
+          <Route
+            path="/admin"
+            element={
+              <StaffAdminRoute>
+                <AdminPage />
+              </StaffAdminRoute>
+            }
+          />
+
+          {/* Staff */}
+          <Route path="/staff/login" element={<StaffLoginPage />} />
+          <Route path="/invite/:code" element={<InvitePage />} />
+          <Route
+            path="/staff"
+            element={
+              <ProtectedRoute>
+                <StaffDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/museum/:id"
+            element={
+              <ProtectedRoute>
+                <MuseumDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/museum/:id/:section"
+            element={
+              <ProtectedRoute>
+                <MuseumDetailPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Fallbacks */}
           <Route path="/excursion" element={<Navigate to="/excursion-type" replace />} />
