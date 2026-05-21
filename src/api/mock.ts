@@ -74,12 +74,26 @@ const mockExhibits: Exhibit[] = [
 ]
 
 let mockMuseumIdCounter = 3
-let mockUserIdCounter = 4
+let mockUserIdCounter = 5
+
+export const MOCK_ROLE_ACCOUNTS = {
+  superadmin: { email: 'superadmin@museum.ru', password: 'demo12345', name: 'Суперадминистратор' },
+  owner: { email: 'owner@museum.ru', password: 'demo12345', name: 'Владелец музея' },
+  editor: { email: 'editor@museum.ru', password: 'demo12345', name: 'Редактор музея' },
+  viewer: { email: 'viewer@museum.ru', password: 'demo12345', name: 'Наблюдатель музея' },
+} as const
+
+export const MOCK_ROLE_INVITE_LINKS = {
+  superadmin: 'http://localhost:3000/invite/mock-superadmin',
+  owner: 'http://localhost:3000/invite/mock-owner',
+  editor: 'http://localhost:3000/invite/mock-editor',
+  viewer: 'http://localhost:3000/invite/mock-viewer',
+} as const
 
 let mockCurrentUser: StaffUser = {
   id: 1,
-  email: 'demo@museum.ru',
-  name: 'Демо-сотрудник',
+  email: MOCK_ROLE_ACCOUNTS.superadmin.email,
+  name: MOCK_ROLE_ACCOUNTS.superadmin.name,
   role: 'superadmin',
 }
 
@@ -87,12 +101,39 @@ let mockCurrentToken = 'mock-token'
 
 const mockRegisteredUsers = new Map<string, StaffUser>([
   [
-    'demo@museum.ru',
+    MOCK_ROLE_ACCOUNTS.superadmin.email,
     {
       id: 1,
-      email: 'demo@museum.ru',
-      name: 'Демо-сотрудник',
+      email: MOCK_ROLE_ACCOUNTS.superadmin.email,
+      name: MOCK_ROLE_ACCOUNTS.superadmin.name,
       role: 'superadmin',
+    },
+  ],
+  [
+    MOCK_ROLE_ACCOUNTS.owner.email,
+    {
+      id: 2,
+      email: MOCK_ROLE_ACCOUNTS.owner.email,
+      name: MOCK_ROLE_ACCOUNTS.owner.name,
+      role: 'owner',
+    },
+  ],
+  [
+    MOCK_ROLE_ACCOUNTS.editor.email,
+    {
+      id: 3,
+      email: MOCK_ROLE_ACCOUNTS.editor.email,
+      name: MOCK_ROLE_ACCOUNTS.editor.name,
+      role: 'editor',
+    },
+  ],
+  [
+    MOCK_ROLE_ACCOUNTS.viewer.email,
+    {
+      id: 4,
+      email: MOCK_ROLE_ACCOUNTS.viewer.email,
+      name: MOCK_ROLE_ACCOUNTS.viewer.name,
+      role: 'viewer',
     },
   ],
 ])
@@ -102,7 +143,7 @@ const staffMuseums: StaffMuseum[] = [
     id: 1,
     name: 'Красноярский художественный музей',
     description: 'Галерея живописи и графики',
-    role: 'owner',
+      role: 'owner',
   },
   {
     id: 2,
@@ -116,15 +157,15 @@ const staffMembersByMuseum = new Map<number, StaffMember[]>([
   [
     1,
     [
-      { id: 1, name: 'Демо-сотрудник', email: 'demo@museum.ru', role: 'superadmin' },
-      { id: 2, name: 'Марина', email: 'marina@museum.ru', role: 'editor' },
+      { id: 1, name: MOCK_ROLE_ACCOUNTS.superadmin.name, email: MOCK_ROLE_ACCOUNTS.superadmin.email, role: 'superadmin' },
+      { id: 2, name: 'Марина', email: MOCK_ROLE_ACCOUNTS.owner.email, role: 'owner' },
     ],
   ],
   [
     2,
     [
-      { id: 3, name: 'Сергей', email: 'sergey@museum.ru', role: 'editor' },
-      { id: 4, name: 'Илья', email: 'ilya@museum.ru', role: 'viewer' },
+        { id: 3, name: 'Сергей', email: MOCK_ROLE_ACCOUNTS.editor.email, role: 'editor' },
+        { id: 4, name: 'Илья', email: MOCK_ROLE_ACCOUNTS.viewer.email, role: 'viewer' },
     ],
   ],
 ])
@@ -262,7 +303,7 @@ export const mockApi = {
       id: ++mockMuseumIdCounter,
       name: payload.name,
       description: payload.description,
-      role: 'Владелец',
+      role: 'owner',
     }
     staffMuseums.unshift(museum)
     mockMuseums.unshift({
@@ -275,14 +316,16 @@ export const mockApi = {
     return withDelay(museum)
   },
 
-  createMuseumInvite: async (museumId: number): Promise<StaffInvite> =>
-    withDelay({
-      token: nextId(`invite_${museumId}`),
-      url: `https://museum.local/invite/${museumId}`,
+  createMuseumInvite: async (museumId: number): Promise<StaffInvite> => {
+    const token = nextId(`invite_${museumId}`)
+    return withDelay({
+      token,
+      url: `http://localhost:3000/invite/${token}`,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    }),
+    })
+  },
 
-  acceptInvite: async () => withDelay({ success: true }),
+  acceptInvite: async (token: string) => withDelay({ success: true, token }),
 
   getMuseumStaff: async (museumId: number): Promise<StaffMember[]> => {
     const staff = staffMembersByMuseum.get(museumId)

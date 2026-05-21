@@ -103,7 +103,7 @@ export const createMuseumInvite = (museumId: number) =>
 export const acceptInvite = (token: string) =>
   withMock(
     () => api.post('/invites/accept', { token }).then((r) => r.data),
-    () => mockApi.acceptInvite(),
+    () => mockApi.acceptInvite(token),
   )
 
 export const getMuseumStaff = (museumId: number) =>
