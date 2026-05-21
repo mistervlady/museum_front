@@ -55,6 +55,14 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/staff/museum/:id/:section"
+            element={
+              <ProtectedRoute>
+                <MuseumDetailPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Fallbacks */}
           <Route path="/excursion" element={<Navigate to="/excursion-type" replace />} />

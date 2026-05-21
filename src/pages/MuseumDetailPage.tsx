@@ -22,8 +22,9 @@ const TEAM_ROLE_OPTIONS = [STAFF_ROLES.EDITOR, STAFF_ROLES.VIEWER] as const
 
 export default function MuseumDetailPage() {
   const navigate = useNavigate()
-  const { id } = useParams<{ id: string }>()
+  const { id, section } = useParams<{ id: string; section?: string }>()
   const museumId = Number(id)
+  const isTeamView = section === 'team'
   const { user } = useAuth()
 
   const [museums, setMuseums] = useState<StaffMuseum[]>([])
@@ -194,7 +195,7 @@ export default function MuseumDetailPage() {
             </Card>
           )}
 
-          <Card hoverable className="group" onClick={() => document.getElementById('museum-team')?.scrollIntoView({ behavior: 'smooth' })}>
+          <Card hoverable className="group" onClick={() => navigate(`/staff/museum/${museumId}/team`)}>
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-xl bg-museum-800 border border-museum-600 flex items-center justify-center shrink-0 group-hover:border-gold/60 transition-colors">
                 <Users className="w-5 h-5 text-gold" />
@@ -217,89 +218,96 @@ export default function MuseumDetailPage() {
             </div>
           </Card>
 
-          <Card id="museum-team">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <h3 className="section-title !mb-0">Команда</h3>
-              {canManageTeam && (
-                <Button size="sm" variant="secondary" onClick={() => setShowAddForm((prev) => !prev)}>
-                  + Добавить сотрудника
-                </Button>
+          {isTeamView && (
+            <Card id="museum-team">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <h3 className="section-title !mb-0">Команда</h3>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => navigate(`/staff/museum/${museumId}`)}>
+                    К музею
+                  </Button>
+                  {canManageTeam && (
+                    <Button size="sm" variant="secondary" onClick={() => setShowAddForm((prev) => !prev)}>
+                      + Добавить сотрудника
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {showAddForm && canManageTeam && (
+                <div className="border border-museum-700 rounded-xl p-3 mb-4 flex flex-col gap-3">
+                  <input
+                    className="input"
+                    type="email"
+                    placeholder="email сотрудника"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                  <select className="input" value={role} onChange={(e) => setRole(e.target.value as 'editor' | 'viewer')}>
+                    {TEAM_ROLE_OPTIONS.map((roleOption) => (
+                      <option key={roleOption} value={roleOption}>
+                        {ROLE_DISPLAY_NAMES[roleOption]}
+                      </option>
+                    ))}
+                  </select>
+                  <Button onClick={handleAdd} loading={actionLoading} disabled={!email.trim()}>
+                    Добавить
+                  </Button>
+                </div>
               )}
-            </div>
 
-            {showAddForm && canManageTeam && (
-              <div className="border border-museum-700 rounded-xl p-3 mb-4 flex flex-col gap-3">
-                <input
-                  className="input"
-                  type="email"
-                  placeholder="email сотрудника"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                <select className="input" value={role} onChange={(e) => setRole(e.target.value as 'editor' | 'viewer')}>
-                  {TEAM_ROLE_OPTIONS.map((roleOption) => (
-                    <option key={roleOption} value={roleOption}>
-                      {ROLE_DISPLAY_NAMES[roleOption]}
-                    </option>
-                  ))}
-                </select>
-                <Button onClick={handleAdd} loading={actionLoading} disabled={!email.trim()}>
-                  Добавить
-                </Button>
-              </div>
-            )}
+              {message && (
+                <div className="text-xs text-museum-300 border border-museum-700 rounded-xl px-3 py-2 mb-4">
+                  {message}
+                </div>
+              )}
 
-            {message && (
-              <div className="text-xs text-museum-300 border border-museum-700 rounded-xl px-3 py-2 mb-4">
-                {message}
-              </div>
-            )}
+              <div className="flex flex-col gap-2">
+                {staff.map((member) => {
+                  const isSelf = member.id === user?.id
+                  const canEditMember = canManageTeam && !isSelf && member.role !== STAFF_ROLES.OWNER
+                  return (
+                    <div
+                      key={`${member.id}-${member.email}`}
+                      className="border border-museum-700 rounded-xl px-3 py-3 flex flex-col md:flex-row md:items-center gap-3 md:justify-between"
+                    >
+                      <div>
+                        <p className="text-museum-100 font-medium">{member.name ?? 'Без имени'}</p>
+                        <p className="text-museum-500 text-sm">{member.email ?? 'Email не указан'}</p>
+                      </div>
 
-            <div className="flex flex-col gap-2">
-              {staff.map((member) => {
-                const isSelf = member.id === user?.id
-                const canEditMember = canManageTeam && !isSelf && member.role !== STAFF_ROLES.OWNER
-                return (
-                  <div
-                    key={`${member.id}-${member.email}`}
-                    className="border border-museum-700 rounded-xl px-3 py-3 flex flex-col md:flex-row md:items-center gap-3 md:justify-between"
-                  >
-                    <div>
-                      <p className="text-museum-100 font-medium">{member.name ?? 'Без имени'}</p>
-                      <p className="text-museum-500 text-sm">{member.email ?? 'Email не указан'}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="badge badge-gold text-xs">{roleName(member.role)}</span>
+
+                        {canEditMember ? (
+                          <select
+                            className="input !w-auto !py-2 !px-3 !text-sm"
+                            value={member.role === STAFF_ROLES.VIEWER ? STAFF_ROLES.VIEWER : STAFF_ROLES.EDITOR}
+                            onChange={(e) => handleRoleChange(member.id, e.target.value as 'editor' | 'viewer')}
+                            disabled={actionLoading}
+                          >
+                            <option value={STAFF_ROLES.EDITOR}>{ROLE_DISPLAY_NAMES.editor}</option>
+                            <option value={STAFF_ROLES.VIEWER}>{ROLE_DISPLAY_NAMES.viewer}</option>
+                          </select>
+                        ) : null}
+
+                        {canEditMember ? (
+                          <button
+                            className="btn-ghost !px-2 !py-2 text-red-400 hover:text-red-300"
+                            title="Удалить сотрудника"
+                            onClick={() => handleRemove(member)}
+                            disabled={actionLoading}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="badge badge-gold text-xs">{roleName(member.role)}</span>
-
-                      {canEditMember ? (
-                        <select
-                          className="input !w-auto !py-2 !px-3 !text-sm"
-                          value={member.role === STAFF_ROLES.VIEWER ? STAFF_ROLES.VIEWER : STAFF_ROLES.EDITOR}
-                          onChange={(e) => handleRoleChange(member.id, e.target.value as 'editor' | 'viewer')}
-                          disabled={actionLoading}
-                        >
-                          <option value={STAFF_ROLES.EDITOR}>{ROLE_DISPLAY_NAMES.editor}</option>
-                          <option value={STAFF_ROLES.VIEWER}>{ROLE_DISPLAY_NAMES.viewer}</option>
-                        </select>
-                      ) : null}
-
-                      {canEditMember ? (
-                        <button
-                          className="btn-ghost !px-2 !py-2 text-red-400 hover:text-red-300"
-                          title="Удалить сотрудника"
-                          onClick={() => handleRemove(member)}
-                          disabled={actionLoading}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </Card>
+                  )
+                })}
+              </div>
+            </Card>
+          )}
         </motion.div>
       </PageLayout>
     </>
