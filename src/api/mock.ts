@@ -1,4 +1,6 @@
 import type {
+  AddStaffMemberPayload,
+  AddStaffMemberResult,
   AuthSession,
   Exhibit,
   ExhibitDescription,
@@ -99,41 +101,58 @@ let mockCurrentUser: StaffUser = {
 
 let mockCurrentToken = 'mock-token'
 
-const mockRegisteredUsers = new Map<string, StaffUser>([
+type MockRegisteredUser = {
+  user: StaffUser
+  password: string
+}
+
+const mockRegisteredUsers = new Map<string, MockRegisteredUser>([
   [
     MOCK_ROLE_ACCOUNTS.superadmin.email,
     {
-      id: 1,
-      email: MOCK_ROLE_ACCOUNTS.superadmin.email,
-      name: MOCK_ROLE_ACCOUNTS.superadmin.name,
-      role: 'superadmin',
+      user: {
+        id: 1,
+        email: MOCK_ROLE_ACCOUNTS.superadmin.email,
+        name: MOCK_ROLE_ACCOUNTS.superadmin.name,
+        role: 'superadmin',
+      },
+      password: MOCK_ROLE_ACCOUNTS.superadmin.password,
     },
   ],
   [
     MOCK_ROLE_ACCOUNTS.owner.email,
     {
-      id: 2,
-      email: MOCK_ROLE_ACCOUNTS.owner.email,
-      name: MOCK_ROLE_ACCOUNTS.owner.name,
-      role: 'owner',
+      user: {
+        id: 2,
+        email: MOCK_ROLE_ACCOUNTS.owner.email,
+        name: MOCK_ROLE_ACCOUNTS.owner.name,
+        role: 'owner',
+      },
+      password: MOCK_ROLE_ACCOUNTS.owner.password,
     },
   ],
   [
     MOCK_ROLE_ACCOUNTS.editor.email,
     {
-      id: 3,
-      email: MOCK_ROLE_ACCOUNTS.editor.email,
-      name: MOCK_ROLE_ACCOUNTS.editor.name,
-      role: 'editor',
+      user: {
+        id: 3,
+        email: MOCK_ROLE_ACCOUNTS.editor.email,
+        name: MOCK_ROLE_ACCOUNTS.editor.name,
+        role: 'editor',
+      },
+      password: MOCK_ROLE_ACCOUNTS.editor.password,
     },
   ],
   [
     MOCK_ROLE_ACCOUNTS.viewer.email,
     {
-      id: 4,
-      email: MOCK_ROLE_ACCOUNTS.viewer.email,
-      name: MOCK_ROLE_ACCOUNTS.viewer.name,
-      role: 'viewer',
+      user: {
+        id: 4,
+        email: MOCK_ROLE_ACCOUNTS.viewer.email,
+        name: MOCK_ROLE_ACCOUNTS.viewer.name,
+        role: 'viewer',
+      },
+      password: MOCK_ROLE_ACCOUNTS.viewer.password,
     },
   ],
 ])
@@ -143,12 +162,14 @@ const staffMuseums: StaffMuseum[] = [
     id: 1,
     name: 'Красноярский художественный музей',
     description: 'Галерея живописи и графики',
+    accent: 'От классики к современности',
     role: 'owner',
   },
   {
     id: 2,
     name: 'Музей науки и технологий',
     description: 'Экспериментальная площадка',
+    accent: 'Интерактив и эксперименты',
     role: 'editor',
   },
 ]
@@ -259,36 +280,45 @@ const getNextExhibit = (
   return next
 }
 
+const normalizeEmail = (email: string) => email.trim().toLowerCase()
+
+const getRegistered = (email: string) => mockRegisteredUsers.get(normalizeEmail(email))
+
 export const isMockEnabled = () => import.meta.env.VITE_USE_MOCKS !== 'false'
 
 export const mockApi = {
   getMuseums: async () => withDelay([...mockMuseums]),
 
   registerStaff: async (payload: RegisterPayload): Promise<AuthSession> => {
+    const email = normalizeEmail(payload.email)
     const newUser: StaffUser = {
       id: ++mockUserIdCounter,
-      email: payload.email,
+      email,
       name: payload.name ?? 'Новый сотрудник',
       role: 'editor',
     }
-    mockRegisteredUsers.set(payload.email, newUser)
+    mockRegisteredUsers.set(email, { user: newUser, password: payload.password })
     mockCurrentUser = newUser
     mockCurrentToken = nextId('mock-token')
     return withDelay({ token: mockCurrentToken, user: mockCurrentUser })
   },
 
   loginStaff: async (payload: LoginPayload): Promise<AuthSession> => {
-    const user = mockRegisteredUsers.get(payload.email)
-    if (user) {
-      mockCurrentUser = user
+    const email = normalizeEmail(payload.email)
+    const account = getRegistered(email)
+    if (account) {
+      if (account.password !== payload.password) {
+        throw new Error('Неверный email или пароль')
+      }
+      mockCurrentUser = account.user
     } else {
       mockCurrentUser = {
         id: ++mockUserIdCounter,
-        email: payload.email,
+        email,
         name: 'Сотрудник',
         role: 'editor',
       }
-      mockRegisteredUsers.set(payload.email, mockCurrentUser)
+      mockRegisteredUsers.set(email, { user: mockCurrentUser, password: payload.password })
     }
     mockCurrentToken = nextId('mock-token')
     return withDelay({ token: mockCurrentToken, user: mockCurrentUser })
@@ -303,6 +333,7 @@ export const mockApi = {
       id: ++mockMuseumIdCounter,
       name: payload.name,
       description: payload.description,
+      accent: 'Новый музей',
       role: 'owner',
     }
     staffMuseums.unshift(museum)
@@ -330,6 +361,76 @@ export const mockApi = {
   getMuseumStaff: async (museumId: number): Promise<StaffMember[]> => {
     const staff = staffMembersByMuseum.get(museumId)
     return withDelay(staff ? [...staff] : [])
+  },
+
+  addMuseumStaffMember: async (museumId: number, payload: AddStaffMemberPayload): Promise<AddStaffMemberResult> => {
+    const email = normalizeEmail(payload.email)
+    let account = getRegistered(email)
+    let tempPassword: string | undefined
+    if (!account) {
+      const created: StaffUser = {
+        id: ++mockUserIdCounter,
+        email,
+        name: email.split('@')[0] || 'Новый сотрудник',
+        role: payload.role,
+      }
+      tempPassword = email
+      account = { user: created, password: tempPassword }
+      mockRegisteredUsers.set(email, account)
+    }
+
+    const currentStaff = staffMembersByMuseum.get(museumId) ?? []
+    const existing = currentStaff.find((member) => member.email?.toLowerCase() === email)
+    if (existing) {
+      throw new Error('Сотрудник с таким email уже есть в этом музее')
+    }
+
+    const member: StaffMember = {
+      id: account.user.id,
+      email: account.user.email,
+      name: account.user.name,
+      role: payload.role,
+    }
+    staffMembersByMuseum.set(museumId, [...currentStaff, member])
+    return withDelay({ member, tempPassword })
+  },
+
+  updateMuseumStaffRole: async (
+    museumId: number,
+    memberId: number,
+    payload: { role: 'editor' | 'viewer' },
+  ): Promise<StaffMember> => {
+    const staff = staffMembersByMuseum.get(museumId) ?? []
+    const index = staff.findIndex((member) => member.id === memberId)
+    if (index < 0) {
+      throw new Error('Сотрудник не найден')
+    }
+    const nextMember = { ...staff[index], role: payload.role }
+    const nextStaff = [...staff]
+    nextStaff[index] = nextMember
+    staffMembersByMuseum.set(museumId, nextStaff)
+    return withDelay(nextMember)
+  },
+
+  removeMuseumStaffMember: async (museumId: number, memberId: number) => {
+    const staff = staffMembersByMuseum.get(museumId) ?? []
+    staffMembersByMuseum.set(
+      museumId,
+      staff.filter((member) => member.id !== memberId),
+    )
+    return withDelay({ success: true })
+  },
+
+  changeStaffPassword: async (payload: { currentPassword: string; newPassword: string }) => {
+    const account = getRegistered(mockCurrentUser.email)
+    if (!account || account.password !== payload.currentPassword) {
+      throw new Error('Текущий пароль указан неверно')
+    }
+    mockRegisteredUsers.set(mockCurrentUser.email.toLowerCase(), {
+      ...account,
+      password: payload.newPassword,
+    })
+    return withDelay({ success: true })
   },
 
   startPersonalExcursion: async (params: { museumId: number; exhibitCount: number }): Promise<PersonalExcursionSession> => {

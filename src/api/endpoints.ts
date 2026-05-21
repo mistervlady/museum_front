@@ -1,6 +1,8 @@
 import api from './client'
 import { isMockEnabled, mockApi } from './mock'
 import type {
+  AddStaffMemberPayload,
+  AddStaffMemberResult,
   AuthSession,
   LoginPayload,
   Museum,
@@ -117,6 +119,34 @@ export const getMuseumStaff = (museumId: number) =>
           return data.items ?? data.staff ?? []
         }),
     () => mockApi.getMuseumStaff(museumId),
+  )
+
+export const addMuseumStaffMember = (museumId: number, payload: AddStaffMemberPayload) =>
+  withMock(
+    () => api.post<AddStaffMemberResult>(`/museums/${museumId}/staff`, payload).then((r) => r.data),
+    () => mockApi.addMuseumStaffMember(museumId, payload),
+  )
+
+export const updateMuseumStaffRole = (
+  museumId: number,
+  memberId: number,
+  payload: { role: 'editor' | 'viewer' },
+) =>
+  withMock(
+    () => api.patch<StaffMember>(`/museums/${museumId}/staff/${memberId}`, payload).then((r) => r.data),
+    () => mockApi.updateMuseumStaffRole(museumId, memberId, payload),
+  )
+
+export const removeMuseumStaffMember = (museumId: number, memberId: number) =>
+  withMock(
+    () => api.delete(`/museums/${museumId}/staff/${memberId}`).then(() => undefined),
+    () => mockApi.removeMuseumStaffMember(museumId, memberId),
+  )
+
+export const changeStaffPassword = (payload: { currentPassword: string; newPassword: string }) =>
+  withMock(
+    () => api.post('/auth/change-password', payload).then((r) => r.data),
+    () => mockApi.changeStaffPassword(payload),
   )
 
 // ─── Museums ─────────────────────────────────────────────────────────────────

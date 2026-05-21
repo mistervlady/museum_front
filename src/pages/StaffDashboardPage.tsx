@@ -1,23 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Settings } from 'lucide-react'
+import { ArrowRight, MapPinned } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
-import {
-  acceptInvite,
-  createMuseum,
-  createMuseumInvite,
-  getStaffMuseums,
-} from '@/api/endpoints'
-import type { StaffInvite, StaffMuseum } from '@/types'
+import { changeStaffPassword, createMuseum, getStaffMuseums } from '@/api/endpoints'
+import type { StaffMuseum } from '@/types'
 import { useAuth } from '@/auth/AuthProvider'
 import { ROLE_DISPLAY_NAMES, STAFF_ROLES, type StaffRole } from '@/auth/constants'
-
-const LOCALHOST_ORIGIN = 'http://localhost:3000'
 
 export default function StaffDashboardPage() {
   const navigate = useNavigate()
@@ -32,13 +25,12 @@ export default function StaffDashboardPage() {
   const [museumDescription, setMuseumDescription] = useState('')
   const [createLoading, setCreateLoading] = useState(false)
   const [createMessage, setCreateMessage] = useState<string | null>(null)
-  const [inviteMuseumId, setInviteMuseumId] = useState<number | null>(null)
-  const [inviteLoading, setInviteLoading] = useState(false)
-  const [inviteResult, setInviteResult] = useState<StaffInvite | null>(null)
-  const [inviteError, setInviteError] = useState<string | null>(null)
-  const [manualInviteCode, setManualInviteCode] = useState('')
-  const [manualInviteLoading, setManualInviteLoading] = useState(false)
-  const [manualInviteMessage, setManualInviteMessage] = useState<string | null>(null)
+
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordLoading, setPasswordLoading] = useState(false)
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
 
   const loadMuseums = useCallback(async () => {
     setMuseumsLoading(true)
@@ -74,63 +66,34 @@ export default function StaffDashboardPage() {
     }
   }
 
-  const handleGoToAdmin = (museumId: number) => {
-    navigate(`/admin?museum=${museumId}`)
-  }
-
-  const isSuperAdmin = userRole === STAFF_ROLES.SUPERADMIN
-  const canGenerateInvite = userRole === STAFF_ROLES.SUPERADMIN || userRole === STAFF_ROLES.OWNER
-
   const getRoleDisplayName = (role?: string) => {
     if (!role) return 'Роль не указана'
     const normalized = role.toLowerCase() as StaffRole
     return ROLE_DISPLAY_NAMES[normalized] ?? role
   }
 
-  const inviteUrl =
-    inviteResult?.url ??
-    (inviteResult?.token
-      ? `${typeof window !== 'undefined' ? window.location.origin : LOCALHOST_ORIGIN}/invite/${inviteResult.token}`
-      : null)
-
-  const handleGenerateInvite = async () => {
-    const selectedMuseumId = inviteMuseumId ?? museums[0]?.id
-    if (!selectedMuseumId) return
-    setInviteLoading(true)
-    setInviteError(null)
-    setInviteResult(null)
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) return
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage('Новый пароль и подтверждение не совпадают.')
+      return
+    }
+    setPasswordLoading(true)
+    setPasswordMessage(null)
     try {
-      const invite = await createMuseumInvite(selectedMuseumId)
-      setInviteResult(invite)
+      await changeStaffPassword({ currentPassword, newPassword })
+      setPasswordMessage('Пароль успешно обновлён.')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
     } catch (e) {
-      setInviteError((e as Error).message)
+      setPasswordMessage((e as Error).message)
     } finally {
-      setInviteLoading(false)
+      setPasswordLoading(false)
     }
   }
 
-  const handleAcceptManualInvite = async () => {
-    const token = manualInviteCode.trim()
-    if (!token) return
-    setManualInviteLoading(true)
-    setManualInviteMessage(null)
-    try {
-      await acceptInvite(token)
-      setManualInviteMessage('Приглашение успешно применено.')
-      setManualInviteCode('')
-      await loadMuseums()
-    } catch (e) {
-      setManualInviteMessage((e as Error).message)
-    } finally {
-      setManualInviteLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (!inviteMuseumId && museums[0]?.id) {
-      setInviteMuseumId(museums[0].id)
-    }
-  }, [inviteMuseumId, museums])
+  const isSuperAdmin = userRole === STAFF_ROLES.SUPERADMIN
 
   return (
     <>
@@ -165,43 +128,33 @@ export default function StaffDashboardPage() {
               </Card>
             ) : (
               <div className="grid gap-3">
-                {museums.map((museum) => (
-                  <Card
+                {museums.map((museum, index) => (
+                  <button
                     key={museum.id}
-                    className="flex flex-col gap-4"
+                    onClick={() => navigate(`/staff/museum/${museum.id}`)}
+                    className="card-hover flex items-start justify-between gap-4 text-left group"
                   >
-                    <div>
-                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <p className="text-museum-100 font-semibold">{museum.name}</p>
-                        <span className="badge badge-gold text-xs">
-                          {getRoleDisplayName(museum.role)}
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-gold/20 border border-gold/30 flex items-center justify-center shrink-0 mt-0.5">
+                        <MapPinned className="w-5 h-5 text-gold" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <h3 className="font-serif font-semibold text-museum-100 group-hover:text-gold transition-colors">
+                            {museum.name}
+                          </h3>
+                          <span className="badge badge-gold text-xs shrink-0">
+                            {getRoleDisplayName(museum.role)}
+                          </span>
+                        </div>
+                        <p className="text-museum-500 text-sm">{museum.description ?? 'Описание не указано'}</p>
+                        <span className="inline-block mt-2 text-xs text-museum-600 italic">
+                          {museum.accent ?? (index % 2 === 0 ? 'Уникальная коллекция' : 'Экспонаты разных эпох')}
                         </span>
                       </div>
-                      <p className="text-xs text-museum-500">{museum.description ?? 'Описание не указано'}</p>
                     </div>
-                    <Card hoverable className="group p-4" onClick={() => handleGoToAdmin(museum.id)}>
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-museum-800 border border-museum-600 flex items-center justify-center shrink-0 group-hover:border-gold/60 transition-colors">
-                          <Settings className="w-5 h-5 text-gold" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-serif font-semibold text-museum-50 text-base mb-1 group-hover:text-gold transition-colors">
-                            Администрирование
-                          </h4>
-                          <p className="text-museum-400 text-sm leading-relaxed mb-3">
-                            Загрузите новые экспонаты и настройте схему залов выбранного музея.
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {['Загрузка данных', 'Схема залов'].map((tag) => (
-                              <span key={tag} className="badge badge-gold text-xs">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  </Card>
+                    <ArrowRight className="w-5 h-5 text-museum-600 group-hover:text-gold group-hover:translate-x-1 transition-all shrink-0 mt-0.5" />
+                  </button>
                 ))}
               </div>
             )}
@@ -239,69 +192,41 @@ export default function StaffDashboardPage() {
               </Card>
             )}
 
-            {canGenerateInvite && (
-              <Card>
-                <h3 className="section-title">Сгенерировать приглашение</h3>
-                <div className="flex flex-col gap-3">
-                  <select
-                    className="input"
-                    value={inviteMuseumId ?? ''}
-                    onChange={(e) => setInviteMuseumId(Number(e.target.value))}
-                    disabled={museums.length === 0}
-                  >
-                    {museums.map((museum) => (
-                      <option key={museum.id} value={museum.id}>
-                        {museum.name}
-                      </option>
-                    ))}
-                  </select>
-                  {museums.length === 0 && (
-                    <div className="text-xs text-museum-400 border border-museum-700 rounded-xl px-3 py-2">
-                      Нет доступных музеев для генерации приглашения.
-                    </div>
-                  )}
-                  {inviteError && (
-                    <div className="text-xs text-red-400 border border-red-700/40 bg-red-950/40 rounded-xl px-3 py-2">
-                      {inviteError}
-                    </div>
-                  )}
-                  {inviteResult && (
-                    <div className="text-xs text-museum-300 border border-museum-700 rounded-xl px-3 py-2 break-all">
-                      <p className="mb-1">Код: {inviteResult.token}</p>
-                      {inviteUrl && <p>Ссылка: {inviteUrl}</p>}
-                    </div>
-                  )}
-                  <Button
-                    loading={inviteLoading}
-                    onClick={handleGenerateInvite}
-                    disabled={museums.length === 0}
-                  >
-                    Сгенерировать приглашение
-                  </Button>
-                </div>
-              </Card>
-            )}
-
             <Card>
-              <h3 className="section-title">Принять приглашение</h3>
+              <h3 className="section-title">Профиль</h3>
               <div className="flex flex-col gap-3">
                 <input
                   className="input"
-                  placeholder="Введите код приглашения"
-                  value={manualInviteCode}
-                  onChange={(e) => setManualInviteCode(e.target.value)}
+                  type="password"
+                  placeholder="Текущий пароль"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
                 />
-                {manualInviteMessage && (
+                <input
+                  className="input"
+                  type="password"
+                  placeholder="Новый пароль"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+                <input
+                  className="input"
+                  type="password"
+                  placeholder="Подтверждение нового пароля"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+                {passwordMessage && (
                   <div className="text-xs text-museum-300 border border-museum-700 rounded-xl px-3 py-2">
-                    {manualInviteMessage}
+                    {passwordMessage}
                   </div>
                 )}
                 <Button
-                  loading={manualInviteLoading}
-                  onClick={handleAcceptManualInvite}
-                  disabled={!manualInviteCode.trim()}
+                  loading={passwordLoading}
+                  onClick={handleChangePassword}
+                  disabled={!currentPassword || !newPassword || !confirmPassword}
                 >
-                  Применить код
+                  Сменить пароль
                 </Button>
               </div>
             </Card>

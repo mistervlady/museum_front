@@ -37,6 +37,7 @@ export interface StaffMuseum {
   id: number
   name: string
   description?: string
+  accent?: string
   role?: string
 }
 
@@ -45,6 +46,16 @@ export interface StaffMember {
   email?: string
   name?: string
   role?: string
+}
+
+export interface AddStaffMemberPayload {
+  email: string
+  role: 'editor' | 'viewer'
+}
+
+export interface AddStaffMemberResult {
+  member: StaffMember
+  tempPassword?: string
 }
 
 export interface StaffInvite {

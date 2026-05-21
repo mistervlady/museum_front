@@ -9,6 +9,7 @@ import AdminPage from './pages/AdminPage'
 import NotFoundPage from './pages/NotFoundPage'
 import StaffLoginPage from './pages/StaffLoginPage'
 import StaffDashboardPage from './pages/StaffDashboardPage'
+import MuseumDetailPage from './pages/MuseumDetailPage'
 import InvitePage from './pages/InvitePage'
 import ProtectedRoute from './auth/ProtectedRoute'
 import StaffAdminRoute from './auth/StaffAdminRoute'
@@ -43,6 +44,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <StaffDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/museum/:id"
+            element={
+              <ProtectedRoute>
+                <MuseumDetailPage />
               </ProtectedRoute>
             }
           />
