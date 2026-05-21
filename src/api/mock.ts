@@ -143,7 +143,7 @@ const staffMuseums: StaffMuseum[] = [
     id: 1,
     name: 'Красноярский художественный музей',
     description: 'Галерея живописи и графики',
-      role: 'owner',
+    role: 'owner',
   },
   {
     id: 2,
@@ -164,8 +164,8 @@ const staffMembersByMuseum = new Map<number, StaffMember[]>([
   [
     2,
     [
-        { id: 3, name: 'Сергей', email: MOCK_ROLE_ACCOUNTS.editor.email, role: 'editor' },
-        { id: 4, name: 'Илья', email: MOCK_ROLE_ACCOUNTS.viewer.email, role: 'viewer' },
+      { id: 3, name: 'Сергей', email: MOCK_ROLE_ACCOUNTS.editor.email, role: 'editor' },
+      { id: 4, name: 'Илья', email: MOCK_ROLE_ACCOUNTS.viewer.email, role: 'viewer' },
     ],
   ],
 ])
