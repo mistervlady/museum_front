@@ -17,6 +17,8 @@ import type { StaffInvite, StaffMuseum } from '@/types'
 import { useAuth } from '@/auth/AuthProvider'
 import { ROLE_DISPLAY_NAMES, STAFF_ROLES, type StaffRole } from '@/auth/constants'
 
+const LOCALHOST_ORIGIN = 'http://localhost:3000'
+
 export default function StaffDashboardPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -88,7 +90,7 @@ export default function StaffDashboardPage() {
   const inviteUrl =
     inviteResult?.url ??
     (inviteResult?.token
-      ? `${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/invite/${inviteResult.token}`
+      ? `${typeof window !== 'undefined' ? window.location.origin : LOCALHOST_ORIGIN}/invite/${inviteResult.token}`
       : null)
 
   const handleGenerateInvite = async () => {
